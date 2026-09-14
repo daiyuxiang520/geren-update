@@ -1,8 +1,8 @@
 {
-  "versionCode": 21,
-  "versionName": "3.18.0-android16",
-  "updateLog": "✅ 能耗页日期选择改为日历弹窗（日/月/年）。\n✅ 切日/月/年不再重置日期，新增顶栏「回到当前时间」按钮。\n✅ 可选日期下限自动探测车机最早能耗月份。",
-  "apkUrl": "https://cdn.jsdelivr.net/gh/daiyuxiang520/geren-update@v21/wuling-coexist.apk",
+  "versionCode": 22,
+  "versionName": "3.19.0-android16",
+  "updateLog": "✅ 修复自动更新检测失效：检测地址改为 @main 分支，以后发版只更新配置、无需重装。\n✅ 能耗页日历选择器（上版已含）。",
+  "apkUrl": "https://cdn.jsdelivr.net/gh/daiyuxiang520/geren-update@v22/wuling-coexist.apk",
   "forceUpdate": false,
-  "md5": "35b60e0940513f53ca71550f9ae533f5"
+  "md5": "c8c072b6155f7b9d6672b84be55ab14d"
 }
