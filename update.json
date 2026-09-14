@@ -1,8 +1,8 @@
 {
-  "versionCode": 29,
-  "versionName": "3.26.0-android16",
-  "updateLog": "✅ 更新下载支持手动选择加速下载链接：弹窗内可实时查看各加速源延迟，手动指定下载源（仅本次生效）。\n✅ 默认仍按实时速度自动择优，无需手动干预。\n✅ 其他稳定性优化。",
+  "versionCode": 30,
+  "versionName": "3.27.0-android16",
+  "updateLog": "✅ 「关于我们」开源致谢页大幅完善：新增 hasscc/wuling（车控协议思路来源）署名，第三方组件清单补全。\n✅ 更新下载支持手动选择加速源保持不变。\n✅ 其他稳定性优化。",
   "apkUrl": "https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "065cb5594a46fe0c2f491267520ef1af"
+  "md5": "993ad90e4f0cd19b9a71b72b71bf64fa"
 }
