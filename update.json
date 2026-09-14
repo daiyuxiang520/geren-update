@@ -1,8 +1,8 @@
 {
-  "versionCode": 37,
-  "versionName": "3.34.0-android16",
-  "updateLog": "✅ 修复「天气只露一半」（地址末尾被裁掉一点）：位置卡片原来被 location 绑死，车辆刷新时坐标短暂为 null 会整卡重建，高度算错导致天气行被裁剪。现改用兜底坐标，卡片结构稳定，并加高度动画平滑过渡。\n✅ 天气行改为「无条件占位」：没数据时也显示「加载中 / 未配置Key / 错误原因 / 暂无数据」，而不是整行消失——一眼就能看出卡在哪。\n✅ 天气与地址状态提升到页面外层，切 Tab 或父级重组不再丢失已拿到的数据。",
+  "versionCode": 38,
+  "versionName": "3.35.0-android16",
+  "updateLog": "🔧 真正修好「看不到天气」——位置页整页现在可以上下滚动了。\n根因：位置页最外层 Column 用了 fillMaxSize() 却漏写 verticalScroll（项目里 Home/详情/能耗/我的四个页面都有，唯独这里没有），整页被锁死在一屏高度、超出部分既渲染不出也滑不到。位置卡片连同排在最后的天气行正好被屏幕底边和底部导航栏切掉——这就是「小区」两个字只露出上半截的原因。数据其实从 v33 起就拿得到了，只是被布局挡在视野外。\n✅ 整页 verticalScroll：现在可以上下滑动，天气行一定能够到。\n✅ 地图高度改为随屏幕自适应（屏高 28%，170~260dp），小屏不再把下方卡片挤出首屏。\n✅ 「坐标纠偏」开关从位置卡片上方移到页面最底部，地址与天气整体上移约 76dp，多数机型无需滚动即可看到。\n✅ 删掉末尾多余的 100dp 空白（paddingValues 已为底部导航让过位）。",
   "apkUrl": "https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "d3927b1d191e08a32b588100c6c8f837"
+  "md5": "c3343b6d421a1ff074449e48596aa680"
 }
