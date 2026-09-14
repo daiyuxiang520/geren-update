@@ -1,8 +1,8 @@
 {
-  "versionCode": 28,
-  "versionName": "3.25.0-android16",
-  "updateLog": "✅ 接入友盟+ U-App 使用统计：启动/设备/留存/页面浏览，帮助改进产品。\n✅ 新增 local.properties 的 wuling.umeng.appkey 配置项（留空则关闭统计）。\n✅ 其他稳定性优化。",
+  "versionCode": 29,
+  "versionName": "3.26.0-android16",
+  "updateLog": "✅ 更新下载支持手动选择加速下载链接：弹窗内可实时查看各加速源延迟，手动指定下载源（仅本次生效）。\n✅ 默认仍按实时速度自动择优，无需手动干预。\n✅ 其他稳定性优化。",
   "apkUrl": "https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "23f967a473e9a5b5c6ece589686b1868"
+  "md5": "9b44735b3b4aab0c69d7d1781a7ec4ca"
 }
