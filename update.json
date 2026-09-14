@@ -4,5 +4,5 @@
   "updateLog": "✅ 更新下载支持手动选择加速下载链接：弹窗内可实时查看各加速源延迟，手动指定下载源（仅本次生效）。\n✅ 默认仍按实时速度自动择优，无需手动干预。\n✅ 其他稳定性优化。",
   "apkUrl": "https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "9b44735b3b4aab0c69d7d1781a7ec4ca"
+  "md5": "065cb5594a46fe0c2f491267520ef1af"
 }
