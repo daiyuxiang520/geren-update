@@ -1,8 +1,8 @@
 {
-  "versionCode": 30,
-  "versionName": "3.27.0-android16",
-  "updateLog": "✅ 「关于我们」开源致谢页大幅完善：新增 hasscc/wuling（车控协议思路来源）署名，第三方组件清单补全。\n✅ 更新下载支持手动选择加速源保持不变。\n✅ 其他稳定性优化。",
+  "versionCode": 31,
+  "versionName": "3.28.0-android16",
+  "updateLog": "✅ 车辆位置页新增「所在地区天气」：显示天气现象、温度、湿度、风向风力（高德天气数据）。\n✅ 位置页新增「高德天气 Key」配置项（需「Web 服务」类型 Key，与地图 Key 不通用）。\n✅ 未配置天气 Key 时不显示天气，不影响地图与地址等原有功能。",
   "apkUrl": "https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "993ad90e4f0cd19b9a71b72b71bf64fa"
+  "md5": "f937d63efb91d8ee52a8177e972bc013"
 }
