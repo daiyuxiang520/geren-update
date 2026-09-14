@@ -1,8 +1,8 @@
 {
-  "versionCode": 36,
-  "versionName": "3.33.0-android16",
-  "updateLog": "✅ 修复「日志里天气已拿到、界面却空白」：车辆每 30 秒刷新时 location 会短暂变 null，导致解析协程重启并清空已获得的天气。现在坐标用「最后一次有效值」兜底，刷新不再打断已拿到的数据。\n✅ 单次网络抖动不再让天气闪空：请求失败时暂用上一次成功结果兜底（天气是小时级数据，复用上一份远好过空白）。\n✅ 地址同理：不再因一次刷新失败而整块消失。",
+  "versionCode": 37,
+  "versionName": "3.34.0-android16",
+  "updateLog": "✅ 修复「天气只露一半」（地址末尾被裁掉一点）：位置卡片原来被 location 绑死，车辆刷新时坐标短暂为 null 会整卡重建，高度算错导致天气行被裁剪。现改用兜底坐标，卡片结构稳定，并加高度动画平滑过渡。\n✅ 天气行改为「无条件占位」：没数据时也显示「加载中 / 未配置Key / 错误原因 / 暂无数据」，而不是整行消失——一眼就能看出卡在哪。\n✅ 天气与地址状态提升到页面外层，切 Tab 或父级重组不再丢失已拿到的数据。",
   "apkUrl": "https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "00c986beba39adc1dc016be0635cc95c"
+  "md5": "d3927b1d191e08a32b588100c6c8f837"
 }
