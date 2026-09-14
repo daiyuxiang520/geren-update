@@ -1,0 +1,8 @@
+{
+  "versionCode": 20,
+  "versionName": "3.17.0-android16",
+  "updateLog": "✅ 桌面小组件重构（车图+总续航+双进度条）\n✅ 修复电量/油量进度条末端指示点\n✅ 新增App内自动更新检测（GitHub+jsDelivr）",
+  "apkUrl": "https://cdn.jsdelivr.net/gh/daiyuxiang520/geren-update@v20/wuling-coexist.apk",
+  "forceUpdate": false,
+  "md5": "ec1e01c1972a39485c380de318bc8ac4"
+}
