@@ -1,8 +1,8 @@
 {
-  "versionCode": 33,
-  "versionName": "3.30.0-android16",
-  "updateLog": "✅ 彻底修复「能看到地址、看不到天气」：把地址与天气合并为一次请求链路（单协程串行），不再互相抢刷新导致天气被取消。\n✅ 天气查询失败不再静默：会明确提示是「Key 无效/未绑定天气服务」「配额用尽」还是「网络异常」，方便自行排查。\n✅ 地址与天气共用同一份逆地理结果，请求更少、更省配额；车辆静止时走缓存，几乎零额外请求。\n✅ 天气行新增数据更新时间显示。",
+  "versionCode": 34,
+  "versionName": "3.31.0-android16",
+  "updateLog": "✅ 修复「检测不到新版本」：检查更新改为并发请求全部 15 个加速源、取版本号最大的结果（原来按顺序首个成功即用，一旦靠前的源缓存了旧版，就永远提示已是最新）。\n✅ 有新版本时提前返回，检测更快；无新版本时才等齐所有源再判断，确保结论准确。\n✅ 拉取更新信息时补充反缓存请求头，降低拿到 CDN 旧副本的概率。\n✅ 会记住「给出最新版本的那个源」，下次优先使用。",
   "apkUrl": "https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "d05fef33b994a9bd703dc74b611ca284"
+  "md5": "4dadd860d6e7fd2c1e25e49f893f97d1"
 }
