@@ -1,8 +1,8 @@
 {
-  "versionCode": 23,
-  "versionName": "3.20.0-android16",
-  "updateLog": "✅ 修复自动更新真正可用：改用 GitHub 代理镜像（ghproxy/gh-proxy/ghfast），国内直连可达、内容实时。\n✅ 多镜像自动兜底，单一镜像失效不影响更新。\n✅ 能耗页日历选择器。",
+  "versionCode": 24,
+  "versionName": "3.21.0-android16",
+  "updateLog": "✅ 修复桌面小组件「过段时间不显示」：系统每 30 分钟唤醒时由小组件独立联网刷新，不再依赖 App 进程存活。\n✅ 断网/未登录时保留上次数据，不再变空白。\n✅ 点击刷新即时拉取最新状态。",
   "apkUrl": "https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-coexist.apk",
   "forceUpdate": false,
-  "md5": "fdef4fe44b2c8edfda7dc546627e61f1"
+  "md5": "fd0dd906e5b277396d45e33269e6eefb"
 }
