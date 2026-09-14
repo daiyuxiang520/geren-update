@@ -1,8 +1,8 @@
 {
-  "versionCode": 20,
-  "versionName": "3.17.0-android16",
-  "updateLog": "✅ 桌面小组件重构（车图+总续航+双进度条）\n✅ 修复电量/油量进度条末端指示点\n✅ 新增App内自动更新检测（GitHub+jsDelivr）",
-  "apkUrl": "https://cdn.jsdelivr.net/gh/daiyuxiang520/geren-update@v20/wuling-coexist.apk",
+  "versionCode": 21,
+  "versionName": "3.18.0-android16",
+  "updateLog": "✅ 能耗页日期选择改为日历弹窗（日/月/年）。\n✅ 切日/月/年不再重置日期，新增顶栏「回到当前时间」按钮。\n✅ 可选日期下限自动探测车机最早能耗月份。",
+  "apkUrl": "https://cdn.jsdelivr.net/gh/daiyuxiang520/geren-update@v21/wuling-coexist.apk",
   "forceUpdate": false,
-  "md5": "ec1e01c1972a39485c380de318bc8ac4"
+  "md5": "35b60e0940513f53ca71550f9ae533f5"
 }
