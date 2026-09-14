@@ -1,8 +1,8 @@
 {
-  "versionCode": 34,
-  "versionName": "3.31.0-android16",
-  "updateLog": "✅ 修复「检测不到新版本」：检查更新改为并发请求全部 15 个加速源、取版本号最大的结果（原来按顺序首个成功即用，一旦靠前的源缓存了旧版，就永远提示已是最新）。\n✅ 有新版本时提前返回，检测更快；无新版本时才等齐所有源再判断，确保结论准确。\n✅ 拉取更新信息时补充反缓存请求头，降低拿到 CDN 旧副本的概率。\n✅ 会记住「给出最新版本的那个源」，下次优先使用。",
+  "versionCode": 35,
+  "versionName": "3.32.0-android16",
+  "updateLog": "✅ 天气「双保险」：高德优先（配了Key且成功就用）；高德未配置/未开通天气服务/配额用尽/网络异常时，自动降级 Open-Meteo——它按经纬度直查、无需任何 Key。现在只要有车辆坐标，天气就一定能显示。\n✅ 天气行标注数据来源（高德 / Open-Meteo），一眼看出当前走的是哪条链路。\n✅ 高德请求与返回（含原始 infocode 错误码）已接入「我的 → 调试日志」，weather/地址问题可自行定位，不再靠猜。\n✅ 日志会注明地址来自「服务端」还是「高德逆地理」，避免误判 Key 是否有效（地址能显示并不等于高德 Key 可用）。",
   "apkUrl": "https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "4dadd860d6e7fd2c1e25e49f893f97d1"
+  "md5": "69e81714e841dbc93a4f987041f97959"
 }
