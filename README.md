@@ -27,7 +27,7 @@
 |---|---|
 | 📊 **车辆能耗** | 日/月/年三维度能耗统计，点击日期盒弹**日历选择器**，支持里程、油耗、电耗、百公里综合能耗等指标 |
 | 🖼️ **桌面小组件** | 2×3 车辆状态卡片：车图 + 总续航大字 + 上电/锁车/车窗三行状态 + 电量/油量双进度条 |
-| 🔄 **App 内自动更新** | 启动自动检测新版本，一键下载安装，**无需重新下载 APK** |
+| 🔄 **App 内自动更新** | 启动自动检测新版本，一键下载安装，**无需重新下载 APK**；内置 **15 个 GitHub 公益加速源**，自动记忆可用源 |
 | 🎨 **主题设置** | 深色模式、主题色自定义 |
 | ⌚ **Apple Watch 同步** | 手表端状态同步配置 |
 | 🔋 **系统保活** | 针对各大厂商 ROM 的自启动与后台优化 |
@@ -43,11 +43,13 @@
 ### 最新版本
 前往 [**Releases**](https://github.com/daiyuxiang520/geren-update/releases/latest) 页面下载最新的 `wuling-coexist.apk`。
 
-> ⚠️ **下载提示**：GitHub 直链在国内可能无法访问。如遇下载失败，请使用以下 **代理镜像** 地址：
+> ⚠️ **下载提示**：GitHub 直链在国内可能无法访问。如遇下载失败，请使用以下 **代理镜像** 地址（任选其一替换前面的域名）：
 > ```
+> https://edgeone.gh-proxy.org/https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-coexist.apk
 > https://ghproxy.net/https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-coexist.apk
+> https://wget.la/https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-coexist.apk
 > ```
-> （镜像依次可用：`ghproxy.net`、`gh-proxy.com`、`ghfast.top`）
+> 完整可用镜像列表见下方「自动更新机制」一节。
 
 ### 安装步骤
 1. 下载 APK 文件到手机
@@ -67,8 +69,8 @@ App 内置了自动更新检测，**启动时自动检查**，也可在「我的
 
 ```json
 {
-  "versionCode": 23,
-  "versionName": "3.20.0-android16",
+  "versionCode": 26,
+  "versionName": "3.23.0-android16",
   "updateLog": "...",
   "apkUrl": "https://raw.githubusercontent.com/.../wuling-coexist.apk",
   "forceUpdate": false,
@@ -76,20 +78,69 @@ App 内置了自动更新检测，**启动时自动检查**，也可在「我的
 }
 ```
 
-**检测流程**：App 依次尝试多个 **GitHub 代理镜像**获取 `update.json`（`ghproxy.net` → `gh-proxy.com` → `ghfast.top`），任一成功即返回。若远端 `versionCode` 大于本地，则弹出更新对话框：
+**检测流程**：App 依次尝试 **15 个 GitHub 公益加速源** 获取 `update.json`，任一成功即返回：
 
-1. 点击「立即更新」→ 后台下载 APK
-2. 下载完成 → **MD5 校验**（防篡改）
-3. 校验通过 → 调起系统安装器
-4. 若下载/安装失败 → 自动回退**浏览器下载**
+1. 上次成功的加速源会被**优先尝试**（记忆在本地，避免每次从头重试）
+2. 命中后立即返回，并把该源写回本地，供下次优先使用
+3. 若远端 `versionCode` 大于本地，则弹出更新对话框：
+   - 点击「立即更新」→ 后台下载 APK
+   - 下载完成 → **MD5 校验**（防篡改）
+   - 校验通过 → 调起系统安装器
+   - 若下载/安装失败 → 自动回退**浏览器下载**（同样优先使用可用镜像）
 
-> 采用代理镜像的原因是 `raw.githubusercontent.com`、`api.github.com`、`*.github.io` 在国内均存在 DNS 污染，无法直连。
+### 可用加速源（实测延迟排序）
+
+| # | 加速源 | 实测延迟 |
+|---|---|---|
+| 1 | `edgeone.gh-proxy.org` | 0.20s |
+| 2 | `git.yylx.win` | 0.30s |
+| 3 | `ghfile.geekertao.top` | 0.53s |
+| 4 | `gh.xxooo.cf` | 0.55s |
+| 5 | `ghproxy.net` | 0.60s |
+| 6 | `ghp.keleyaa.com` | 0.63s |
+| 7 | `gitproxy.mrhjx.cn` | 0.63s |
+| 8 | `fastgit.cc` | 0.64s |
+| 9 | `ghpxy.hwinzniej.top` | 0.66s |
+| 10 | `wget.la` | 0.85s（APK 下载最快） |
+| 11 | `github.ednovas.xyz` | 0.86s |
+| 12 | `cdn.gh-proxy.org` | 0.98s |
+| 13 | `github.boki.moe` | 1.01s |
+| 14 | `hub.glowp.xyz` | 1.01s |
+| 15 | `gh.zwy.one` | 1.37s |
+
+> 采用加速源的原因是 `raw.githubusercontent.com`、`api.github.com`、`*.github.io` 在国内均存在 DNS 污染，无法直连。
+
+## 开源致谢
+
+本项目的**更新下载能力**依赖以下开源项目，特此致谢：
+
+### 🌟 XIU2/UserScript —「Github 增强 - 高速下载」
+
+- 项目地址：<https://github.com/XIU2/UserScript>
+- 脚本地址：<https://github.com/XIU2/UserScript/blob/master/GithubEnhanced-High-Speed-Download.user.js>
+- 许可协议：**GPL-3.0**
+
+App 内自动更新所用的 **15 个 GitHub 公益加速源**，提取自该项目脚本中维护的加速源列表，并经本地逐项实测筛选与延迟排序。感谢原作者长期维护这份高质量的加速源清单——没有它，本项目的国内自动更新功能无法实现。
+
+### 其它开源组件
+
+| 组件 | 用途 |
+|---|---|
+| [Jetpack Compose](https://developer.android.com/jetpack/compose) / AndroidX | UI 框架 |
+| [Kotlin Coroutines](https://github.com/Kotlin/kotlinx.coroutines) | 异步与并发 |
+| [OkHttp](https://github.com/square/okhttp) | 网络请求 |
+| [Gson](https://github.com/google/gson) | JSON 序列化（含车辆数据本地缓存） |
+| [Hilt](https://dagger.dev/hilt/) | 依赖注入 |
+| [Coil](https://github.com/coil-kt/coil) | 图片加载 |
 
 ## 版本历史
 
 | 版本 | 说明 |
 |---|---|
-| **v23** (3.20.0) | 自动更新改用 GitHub 代理镜像，三路兜底，国内可达 |
+| **v26** (3.23.0) | 加速源扩展至 **15 个**；新增**成功源记忆**（下次优先命中）；App 内新增「关于我们」开源致谢页 |
+| v25 (3.22.0) | 冷启动秒显：车辆数据本地缓存（Gson 序列化），进 App 即有数据 |
+| v24 (3.21.0) | 桌面小组件独立联网刷新，不再依赖 App 进程（30 分钟自动更新） |
+| v23 (3.20.0) | 自动更新改用 GitHub 代理镜像，多路兜底，国内可达 |
 | v22 (3.19.0) | 修复更新检测 URL 缺陷 |
 | v21 (3.18.0) | 能耗页日历选择器；切维度不重置；顶栏「回到当前时间」 |
 | v20 (3.17.0) | 新增 App 内自动更新；桌面小组件重构 |
@@ -100,7 +151,7 @@ App 内置了自动更新检测，**启动时自动检查**，也可在「我的
 
 ## 免责声明
 
-- 本项目为**个人学习与研究**用途的第三方适配版本，**非五菱官方发布**。
+- 本项目为**个人学习与研究**用途的第三方适配版本，**非五菱官方发布**，与上汽通用五菱无任何关联。
 - 所有车辆数据均通过官方 API 获取，本 App 不存储、不上传用户的任何车辆或个人信息。
 - 请遵守相关服务条款，**使用风险自负**。如涉及侵权，请联系删除。
 - 建议仅在自有车辆上使用，请勿用于商业用途。
@@ -109,6 +160,7 @@ App 内置了自动更新检测，**启动时自动检查**，也可在「我的
 
 - 📦 [Releases 下载页](https://github.com/daiyuxiang520/geren-update/releases)
 - 📄 [更新配置 update.json](./update.json)
+- 🙏 [XIU2/UserScript（加速源来源）](https://github.com/XIU2/UserScript)
 
 ---
 
