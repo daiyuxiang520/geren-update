@@ -1,8 +1,8 @@
-# 五菱 App 共存版（Android 16）
+# 五菱助手（Android 16）
 
-> 五菱官方 App 的 **Android 16 共存版**（可与原版并存的独立包），附带桌面小组件、能耗统计、App 内自动更新等增强功能。
+> 面向 **Android 16** 的五菱车联网第三方客户端，附带桌面小组件、能耗统计、App 内自动更新等增强功能。
 
-[![最新版本](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fghproxy.net%2Fhttps%3A%2F%2Fraw.githubusercontent.com%2Fdaiyuxiang520%2Fgeren-update%2Fmain%2Fupdate.json&query=%24.versionName&label=最新版本&color=blue)](https://github.com/daiyuxiang520/geren-update/releases/latest)
+[![最新版本](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fedgeone.gh-proxy.org%2Fhttps%3A%2F%2Fraw.githubusercontent.com%2Fdaiyuxiang520%2Fgeren-update%2Fmain%2Fupdate.json&query=%24.versionName&label=最新版本&color=blue)](https://github.com/daiyuxiang520/geren-update/releases/latest)
 [![Android](https://img.shields.io/badge/Android-16%20(targetSdk%2036)-green)]()
 [![包名](https://img.shields.io/badge/包名-com.wuling.app.repack-orange)]()
 
@@ -10,9 +10,11 @@
 
 ## 简介
 
-本项目是面向 **Android 16（API 36）** 适配的五菱车联网 App 共存版。**共存版**指使用独立包名 `com.wuling.app.repack` 重新签名打包，因此可以与本机原有的五菱官方 App **同时安装、互不冲突**，无需卸载原版。
+**五菱助手**是一款面向 Android 16（API 36）的五菱车联网客户端，基于官方 API 重新实现，具备完整独立的车辆管理能力。
 
-适用于：官方 App 在 Android 16 上存在兼容问题、或希望在不影响原版的前提下体验增强功能的场景。
+它与官方 App **互相独立**：使用独立包名 `com.wuling.app.repack`，拥有自己的桌面图标、自己的设置与数据，**无需依赖官方 App 即可单独使用**。
+
+适用于：官方 App 在 Android 16 上存在兼容问题，或希望获得更丰富的车控与统计功能的场景。
 
 ## 功能特性
 
@@ -26,10 +28,10 @@
 | 功能 | 说明 |
 |---|---|
 | 📊 **车辆能耗** | 日/月/年三维度能耗统计，点击日期盒弹**日历选择器**，支持里程、油耗、电耗、百公里综合能耗等指标 |
-| 🖼️ **桌面小组件** | 2×3 车辆状态卡片：车图 + 总续航大字 + 上电/锁车/车窗三行状态 + 电量/油量双进度条 |
-| 🔄 **App 内自动更新** | 启动自动检测新版本，一键下载安装，**无需重新下载 APK**；内置 **15 个 GitHub 公益加速源**，自动记忆可用源 |
+| 🖼️ **桌面小组件** | 2×3 车辆状态卡片：车图 + 总续航大字 + 上电/锁车/车窗三行状态 + 电量/油量双进度条，**独立联网刷新**（不依赖 App 进程） |
+| 🔄 **App 内自动更新** | 启动自动检测新版本，一键下载安装，**无需重新下载 APK**；内置 **15 个 GitHub 加速源**，下载前**自动测速择优** |
+| ⚡ **冷启动秒显** | 车辆数据本地缓存，一进 App 立即显示上次数据，再静默刷新 |
 | 🎨 **主题设置** | 深色模式、主题色自定义 |
-| ⌚ **Apple Watch 同步** | 手表端状态同步配置 |
 | 🔋 **系统保活** | 针对各大厂商 ROM 的自启动与后台优化 |
 
 ### 技术特性
@@ -41,20 +43,20 @@
 ## 下载安装
 
 ### 最新版本
-前往 [**Releases**](https://github.com/daiyuxiang520/geren-update/releases/latest) 页面下载最新的 `wuling-coexist.apk`。
+前往 [**Releases**](https://github.com/daiyuxiang520/geren-update/releases/latest) 页面下载最新的 `wuling-assistant.apk`。
 
 > ⚠️ **下载提示**：GitHub 直链在国内可能无法访问。如遇下载失败，请使用以下 **代理镜像** 地址（任选其一替换前面的域名）：
 > ```
-> https://edgeone.gh-proxy.org/https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-coexist.apk
-> https://ghproxy.net/https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-coexist.apk
-> https://wget.la/https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-coexist.apk
+> https://edgeone.gh-proxy.org/https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-assistant.apk
+> https://ghproxy.net/https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-assistant.apk
+> https://wget.la/https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-assistant.apk
 > ```
 > 完整可用镜像列表见下方「自动更新机制」一节。
 
 ### 安装步骤
 1. 下载 APK 文件到手机
 2. 点击安装，系统可能提示「未知来源应用」——请在设置中允许**安装未知应用**权限
-3. 安装完成后，App 名称为 **「五菱共存版」**，可与原版五菱 App 共存
+3. 安装完成后，桌面显示为 **「五菱助手」**
 
 ### 首次使用
 - 打开 App 后按提示完成 **登录 / API Token 配置**
@@ -69,28 +71,32 @@ App 内置了自动更新检测，**启动时自动检查**，也可在「我的
 
 ```json
 {
-  "versionCode": 26,
-  "versionName": "3.23.0-android16",
+  "versionCode": 27,
+  "versionName": "3.24.0-android16",
   "updateLog": "...",
-  "apkUrl": "https://raw.githubusercontent.com/.../wuling-coexist.apk",
+  "apkUrl": "https://raw.githubusercontent.com/.../wuling-assistant.apk",
   "forceUpdate": false,
   "md5": "..."
 }
 ```
 
-**检测流程**：App 依次尝试 **15 个 GitHub 公益加速源** 获取 `update.json`，任一成功即返回：
+### 双链路加速策略
 
-1. 上次成功的加速源会被**优先尝试**（记忆在本地，避免每次从头重试）
-2. 命中后立即返回，并把该源写回本地，供下次优先使用
-3. 若远端 `versionCode` 大于本地，则弹出更新对话框：
-   - 点击「立即更新」→ 后台下载 APK
-   - 下载完成 → **MD5 校验**（防篡改）
-   - 校验通过 → 调起系统安装器
-   - 若下载/安装失败 → 自动回退**浏览器下载**（同样优先使用可用镜像）
+**① 检查更新（拉取 update.json）**：依次尝试 **15 个 GitHub 加速源**，上次成功的源会**优先尝试**（记忆在本地）。
 
-### 可用加速源（实测延迟排序）
+**② 下载 APK**：下载前**自动测速择优**——
 
-| # | 加速源 | 实测延迟 |
+1. 若上次测速选出的**最快源**仍在候选中，直接使用，**跳过测速**（快到几乎无额外开销）
+2. 否则对所有候选源**并发 HEAD 探测**（只读响应头，不下载正文），按响应耗时排序
+3. 用**最快**的源开始下载；若下载失败，自动按速度顺序回退到下一个源
+4. 下载成功 → **MD5 校验**（防篡改）→ 调起系统安装器
+5. 若全部失败 → 自动回退**浏览器下载**
+
+> 之所以要实时测速：公共镜像的延迟波动很大（同一源在不同时段可能从 0.3s 涨到 2.3s），静态排序表会很快过期。实测择优才能保证每次都走最快的路。
+
+### 可用加速源（15 个）
+
+| # | 加速源 | 参考延迟 |
 |---|---|---|
 | 1 | `edgeone.gh-proxy.org` | 0.20s |
 | 2 | `git.yylx.win` | 0.30s |
@@ -101,13 +107,14 @@ App 内置了自动更新检测，**启动时自动检查**，也可在「我的
 | 7 | `gitproxy.mrhjx.cn` | 0.63s |
 | 8 | `fastgit.cc` | 0.64s |
 | 9 | `ghpxy.hwinzniej.top` | 0.66s |
-| 10 | `wget.la` | 0.85s（APK 下载最快） |
+| 10 | `wget.la` | 0.85s |
 | 11 | `github.ednovas.xyz` | 0.86s |
 | 12 | `cdn.gh-proxy.org` | 0.98s |
 | 13 | `github.boki.moe` | 1.01s |
 | 14 | `hub.glowp.xyz` | 1.01s |
 | 15 | `gh.zwy.one` | 1.37s |
 
+> 「参考延迟」仅为初始排序用，实际下载时会被实时测速结果覆盖。
 > 采用加速源的原因是 `raw.githubusercontent.com`、`api.github.com`、`*.github.io` 在国内均存在 DNS 污染，无法直连。
 
 ## 开源致谢
@@ -137,7 +144,8 @@ App 内自动更新所用的 **15 个 GitHub 公益加速源**，提取自该项
 
 | 版本 | 说明 |
 |---|---|
-| **v26** (3.23.0) | 加速源扩展至 **15 个**；新增**成功源记忆**（下次优先命中）；App 内新增「关于我们」开源致谢页 |
+| **v27** (3.24.0) | **更名为「五菱助手」**，明确独立 App 定位；下载更新改为**自动测速择优**并记忆最快源；移除手表同步入口 |
+| v26 (3.23.0) | 加速源扩展至 **15 个**；新增**成功源记忆**；App 内新增「关于我们」开源致谢页 |
 | v25 (3.22.0) | 冷启动秒显：车辆数据本地缓存（Gson 序列化），进 App 即有数据 |
 | v24 (3.21.0) | 桌面小组件独立联网刷新，不再依赖 App 进程（30 分钟自动更新） |
 | v23 (3.20.0) | 自动更新改用 GitHub 代理镜像，多路兜底，国内可达 |
@@ -151,7 +159,7 @@ App 内自动更新所用的 **15 个 GitHub 公益加速源**，提取自该项
 
 ## 免责声明
 
-- 本项目为**个人学习与研究**用途的第三方适配版本，**非五菱官方发布**，与上汽通用五菱无任何关联。
+- 本项目为**个人学习与研究**用途的第三方客户端，**非五菱官方发布**，与上汽通用五菱无任何关联。
 - 所有车辆数据均通过官方 API 获取，本 App 不存储、不上传用户的任何车辆或个人信息。
 - 请遵守相关服务条款，**使用风险自负**。如涉及侵权，请联系删除。
 - 建议仅在自有车辆上使用，请勿用于商业用途。

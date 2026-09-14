@@ -1,8 +1,8 @@
 {
-  "versionCode": 26,
-  "versionName": "3.23.0-android16",
-  "updateLog": "✅ 更新加速源扩展至 15 个（按实测延迟排序），大幅提升国内更新成功率。\n✅ 新增「记住可用源」：自动记录上次成功的加速源，下次优先命中，更新检查更快。\n✅ 「我的 → 关于我们」新增开源致谢页，感谢 XIU2 的「Github 增强 - 高速下载」项目。",
-  "apkUrl": "https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-coexist.apk",
+  "versionCode": 27,
+  "versionName": "3.24.0-android16",
+  "updateLog": "✅ 应用更名为「五菱助手」，明确独立 App 定位。\n✅ 下载更新改为「自动测速择优」：下载前并发探测各加速源，始终走最快的线路，并记忆最快源下次直连。\n✅ 移除手表同步相关入口。",
+  "apkUrl": "https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "61e40d42fbdfa55c303e9a2d905572fc"
+  "md5": "f33d01dfc3e128cd2040502089227c69"
 }
