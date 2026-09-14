@@ -1,8 +1,8 @@
 {
-  "versionCode": 22,
-  "versionName": "3.19.0-android16",
-  "updateLog": "✅ 修复自动更新检测失效：检测地址改为 @main 分支，以后发版只更新配置、无需重装。\n✅ 能耗页日历选择器（上版已含）。",
-  "apkUrl": "https://cdn.jsdelivr.net/gh/daiyuxiang520/geren-update@v22/wuling-coexist.apk",
+  "versionCode": 23,
+  "versionName": "3.20.0-android16",
+  "updateLog": "✅ 修复自动更新真正可用：改用 GitHub 代理镜像（ghproxy/gh-proxy/ghfast），国内直连可达、内容实时。\n✅ 多镜像自动兜底，单一镜像失效不影响更新。\n✅ 能耗页日历选择器。",
+  "apkUrl": "https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-coexist.apk",
   "forceUpdate": false,
-  "md5": "c8c072b6155f7b9d6672b84be55ab14d"
+  "md5": "fdef4fe44b2c8edfda7dc546627e61f1"
 }
