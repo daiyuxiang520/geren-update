@@ -1,5 +1,7 @@
 package com.open.wuling.ui.screens
 
+import com.open.wuling.analytics.UmengPageView
+
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -49,6 +51,8 @@ fun LocationScreen(
     modifier: Modifier = Modifier,
     vehicle: Vehicle?
 ) {
+    UmengPageView("位置")
+
     val context = LocalContext.current
 
     // Key 配置状态

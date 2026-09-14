@@ -1,5 +1,7 @@
 package com.open.wuling.ui.screens
 
+import com.open.wuling.analytics.UmengPageView
+
 import android.content.Intent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -103,6 +105,8 @@ fun ProfileScreen(
     onNavigateToEnergy: () -> Unit = {},
     viewModel: MainViewModel = hiltViewModel()
 ) {
+    UmengPageView("我的")
+
     val user by viewModel.appState.user.collectAsState()
     val selectedVehicle by viewModel.appState.selectedVehicle.collectAsState()
     // Token 配置状态（响应式订阅，保存后实时刷新「已配置/未配置」）

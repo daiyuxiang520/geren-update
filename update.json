@@ -1,8 +1,8 @@
 {
-  "versionCode": 27,
-  "versionName": "3.24.0-android16",
-  "updateLog": "✅ 应用更名为「五菱助手」，明确独立 App 定位。\n✅ 下载更新改为「自动测速择优」：下载前并发探测各加速源，始终走最快的线路，并记忆最快源下次直连。\n✅ 移除手表同步相关入口。",
+  "versionCode": 28,
+  "versionName": "3.25.0-android16",
+  "updateLog": "✅ 接入友盟+ U-App 使用统计：启动/设备/留存/页面浏览，帮助改进产品。\n✅ 新增 local.properties 的 wuling.umeng.appkey 配置项（留空则关闭统计）。\n✅ 其他稳定性优化。",
   "apkUrl": "https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "f33d01dfc3e128cd2040502089227c69"
+  "md5": "23f967a473e9a5b5c6ece589686b1868"
 }

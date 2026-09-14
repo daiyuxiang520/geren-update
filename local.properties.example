@@ -44,6 +44,11 @@ wuling.llb.client.secret=<填写 llb client secret>
 wuling.energy.app.key=<填写 energy app key>
 wuling.energy.app.secret=<填写 energy app secret>
 
+# ---------- 友盟+ 移动统计 AppKey（可选） ----------
+# 用于 U-App 统计（启动/设备/留存/页面浏览）。
+# 留空则构建出的 App 不初始化友盟，统计功能关闭。
+wuling.umeng.appkey=<填写友盟 AppKey，留空则关闭统计>
+
 
 # ============================================================
 #  签名配置（通过环境变量提供，不写在文件里）

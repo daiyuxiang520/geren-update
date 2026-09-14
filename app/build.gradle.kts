@@ -15,11 +15,11 @@ android {
     buildToolsVersion = "36.0.0"
 
     defaultConfig {
-        applicationId = "com.wuling.app.repack"
+        applicationId = "com.open.wuling"
         minSdk = 26
         targetSdk = 36
-        versionCode = 27
-        versionName = "3.24.0-android16"
+        versionCode = 28
+        versionName = "3.25.0-android16"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -58,6 +58,9 @@ android {
         // 能耗数据中心网关凭据（签名用）
         buildConfigField("String", "ENERGY_APP_KEY", "\"${prop("wuling.energy.app.key")}\"")
         buildConfigField("String", "ENERGY_APP_SECRET", "\"${prop("wuling.energy.app.secret")}\"")
+
+        // 友盟+ 移动统计 AppKey（由 local.properties 注入，开源仓库为空）
+        buildConfigField("String", "UMENG_APPKEY", "\"${prop("wuling.umeng.appkey")}\"")
     }
 
     signingConfigs {
@@ -181,6 +184,10 @@ dependencies {
 
     // Coil (for image loading)
     implementation("io.coil-kt:coil-compose:2.7.0")
+
+    // 友盟+ 移动统计（U-App）：common 必选，asms 设备信息组件必选
+    implementation("com.umeng.umsdk:common:9.9.9")
+    implementation("com.umeng.umsdk:asms:1.8.7.2")
 
     // Testing
     testImplementation("junit:junit:4.13.2")

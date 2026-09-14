@@ -1,5 +1,7 @@
 package com.open.wuling.ui.screens
 
+import com.open.wuling.analytics.UmengPageView
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -50,6 +52,8 @@ fun DetailScreen(
     onRefresh: () -> Unit = {},
     onQuickRefresh: () -> Unit = {}
 ) {
+    UmengPageView("详情")
+
     val scrollState = rememberScrollState()
 
     // 每 5 秒快速刷新（仅主状态，保留诊断/胎压/昨日里程）

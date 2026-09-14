@@ -1,5 +1,7 @@
 package com.open.wuling.ui.screens
 
+import com.open.wuling.analytics.UmengPageView
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -43,6 +45,8 @@ fun HomeScreen(
     onToggleBleConnection: () -> Unit = {},
     bleFilteredRssi: Int? = null
 ) {
+    UmengPageView("车辆")
+
     val scrollState = rememberScrollState()
 
     // 仅在首次加载且未配置时自动刷新

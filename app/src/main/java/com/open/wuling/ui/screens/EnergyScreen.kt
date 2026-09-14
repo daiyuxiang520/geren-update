@@ -1,5 +1,7 @@
 package com.open.wuling.ui.screens
 
+import com.open.wuling.analytics.UmengPageView
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -79,6 +81,8 @@ fun EnergyScreen(
     vehicle: Vehicle?,
     onBack: () -> Unit
 ) {
+    UmengPageView("车辆能耗")
+
     val vin = vehicle?.vin ?: ""
 
     // 0=日 1=月 2=年，默认月度（接口字段最全）

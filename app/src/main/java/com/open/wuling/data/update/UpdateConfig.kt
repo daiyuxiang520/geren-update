@@ -3,28 +3,22 @@ package com.open.wuling.data.update
 /**
  * 自动更新配置。
  *
- * 托管方式：把 update.json 与 APK 放在一个公开 GitHub 仓库的 main 分支根目录。
+ * 托管方式：GitHub 公开仓库 `daiyuxiang520/geren-update`（main 分支）
+ *  - update.json 与 APK 均放仓库根目录
  *  - 国内直连 raw.githubusercontent.com 会被污染，故通过 GitHub 公益加速源访问
  *  - 加速源直连 raw，无 CDN 长期缓存问题，改动即时生效
- *
- * 【如何改成自己的更新源】
- *  1. 建一个公开仓库（例如 `your-name/your-app-update`）
- *  2. 把下面 RAW 的 `owner/repo` 换成你的
- *  3. 仓库根目录放 update.json 与 APK（字段格式见 README）
- *  4. 发布新版本时：更新 update.json（versionCode +1、apkUrl/md5 更新）+ 上传新 APK，
- *     推送 main 分支即可；App 侧无需改动、无需重装，启动自动拉取最新版本信息。
  *
  * 【致谢】加速源列表参考自 XIU2 的开源项目「Github 增强 - 高速下载」
  *  - 项目地址: https://github.com/XIU2/UserScript
  *  - 脚本地址: https://github.com/XIU2/UserScript/blob/master/GithubEnhanced-High-Speed-Download.user.js
  *  本项目从该脚本中提取公益加速源并实测筛选，谨此致谢 (GPL-3.0)。
+ *
+ * 发布新版本时：替换仓库中的 update.json（versionCode +1、apkUrl/md5 更新）+ 上传新 APK，
+ * 推送 main 分支即可；App 侧无需改动、无需重装，启动自动拉取最新版本信息。
  */
 object UpdateConfig {
 
-    /**
-     * 更新源仓库地址（main 分支）。
-     * 默认指向本项目的更新分发仓库，你可改成自己的。
-     */
+    /** 仓库相对路径（main 分支） */
     private const val RAW =
         "https://raw.githubusercontent.com/daiyuxiang520/geren-update/main"
 
