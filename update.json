@@ -1,8 +1,8 @@
 {
-  "versionCode": 32,
-  "versionName": "3.29.0-android16",
-  "updateLog": "✅ 修复「车辆位置」看不到详细地址：原地址解析接口已失效，改用高德逆地理编码（复用天气 Key，需「Web 服务」类型）。\n✅ 未配置或 Key 无效时，地址处会给出明确提示，便于排查（不再静默消失）。\n✅ 地址解析改用纠偏后坐标，与地图/天气保持一致。",
+  "versionCode": 33,
+  "versionName": "3.30.0-android16",
+  "updateLog": "✅ 彻底修复「能看到地址、看不到天气」：把地址与天气合并为一次请求链路（单协程串行），不再互相抢刷新导致天气被取消。\n✅ 天气查询失败不再静默：会明确提示是「Key 无效/未绑定天气服务」「配额用尽」还是「网络异常」，方便自行排查。\n✅ 地址与天气共用同一份逆地理结果，请求更少、更省配额；车辆静止时走缓存，几乎零额外请求。\n✅ 天气行新增数据更新时间显示。",
   "apkUrl": "https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "9be90cfef0ee8fa530a439980fa7ae43"
+  "md5": "d05fef33b994a9bd703dc74b611ca284"
 }
