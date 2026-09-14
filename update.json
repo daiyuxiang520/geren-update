@@ -1,8 +1,8 @@
 {
-  "versionCode": 31,
-  "versionName": "3.28.0-android16",
-  "updateLog": "✅ 车辆位置页新增「所在地区天气」：显示天气现象、温度、湿度、风向风力（高德天气数据）。\n✅ 位置页新增「高德天气 Key」配置项（需「Web 服务」类型 Key，与地图 Key 不通用）。\n✅ 未配置天气 Key 时不显示天气，不影响地图与地址等原有功能。",
+  "versionCode": 32,
+  "versionName": "3.29.0-android16",
+  "updateLog": "✅ 修复「车辆位置」看不到详细地址：原地址解析接口已失效，改用高德逆地理编码（复用天气 Key，需「Web 服务」类型）。\n✅ 未配置或 Key 无效时，地址处会给出明确提示，便于排查（不再静默消失）。\n✅ 地址解析改用纠偏后坐标，与地图/天气保持一致。",
   "apkUrl": "https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "f937d63efb91d8ee52a8177e972bc013"
+  "md5": "9be90cfef0ee8fa530a439980fa7ae43"
 }
