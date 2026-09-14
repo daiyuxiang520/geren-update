@@ -1,0 +1,36 @@
+/**
+ * 国内网络镜像注入脚本（仅用于墙内构建环境，不改动业务代码）
+ * 放置于 $GRADLE_USER_HOME/init.d/ 下自动生效。
+ *
+ * 关键：settingsEvaluated 时先 clear() 再注入镜像，避免与
+ * settings.gradle.kts 中残留的官方 google()/mavenCentral() 叠加，
+ * 否则不可达源会排在前面导致每个依赖都卡在连接超时。
+ */
+import groovy.transform.Field
+
+@Field String M_GRADLE_PLUGIN = 'https://maven.aliyun.com/repository/gradle-plugin'
+@Field String M_GOOGLE = 'https://maven.aliyun.com/repository/google'
+@Field String M_PUBLIC = 'https://maven.aliyun.com/repository/public'
+@Field String M_TX = 'https://mirrors.cloud.tencent.com/maven/'
+
+void applyMirrors(RepositoryHandler handler) {
+    handler.maven { url M_GRADLE_PLUGIN }
+    handler.maven { url M_GOOGLE }
+    handler.maven { url M_PUBLIC }
+    handler.maven { url M_TX }
+}
+
+settingsEvaluated { settings ->
+    settings.pluginManagement {
+        repositories {
+            clear()
+            applyMirrors(delegate)
+        }
+    }
+    settings.dependencyResolutionManagement {
+        repositories {
+            clear()
+            applyMirrors(delegate)
+        }
+    }
+}

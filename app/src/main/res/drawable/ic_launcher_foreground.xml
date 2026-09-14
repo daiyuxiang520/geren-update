@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- 背景圆 -->
+    <path
+        android:fillColor="#2D7AF6"
+        android:pathData="M54,54m-40,0a40,40 0,1 1,80 0a40,40 0,1 1,-80 0"/>
+    <!-- 五菱图标 - 简化W -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M34,60L44,40L54,55L64,40L74,60L69,60L64,50L54,62L44,50L39,60Z"/>
+    <!-- 底部横线 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M38,65L70,65L70,68L38,68Z"/>
+</vector>

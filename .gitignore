@@ -1,0 +1,33 @@
+# Android
+*.apk
+# 例外：仓库根目录的发布 APK 是自动更新分发的命脉，必须保留在版本库
+!wuling-assistant.apk
+*.ap_
+*.aab
+*.idsig
+build/
+.gradle/
+.kotlin/
+local.properties
+*.iml
+*.hprof
+.cxx/
+
+# 签名密钥：绝不入库
+*.keystore
+*.jks
+!debug.keystore
+
+# 构建日志
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,62 @@
+# ============================================================
+#  构建配置模板
+# ============================================================
+#  用法：
+#    1. 复制本文件为 local.properties（与 settings.gradle.kts 同级）
+#    2. 按下表逐项填写
+#    3. local.properties 已被 .gitignore 排除，不会被提交
+#
+#  填写说明：
+#    · endpoint / code / version 类为固定值，一般无需修改
+#    · secret / imei 类为凭据，需自行获取
+# ============================================================
+
+
+# ---------- 客户端标识（固定值，可直接使用） ----------
+wuling.client.id=sgmw_llb
+wuling.app.code=sgmw_llb
+wuling.app.version=1920
+
+# ---------- 车联网接口地址（固定值） ----------
+wuling.base.url=https://carc.baojun.net/junApi/sgmw
+
+# ---------- API 版本（固定值，需与服务端兼容） ----------
+wuling.api.version=V8.2.24
+wuling.api.version.code=1920
+
+# ---------- 设备信息（可自行填写任意值） ----------
+# 服务端仅做校验，不要求真实设备
+wuling.device.imei=<任意设备标识，如 a-xxxxxxxxxxxxxxxx>
+wuling.device.model=<设备型号，如 V1938CT>
+wuling.device.brand=<品牌，如 vivo>
+
+# ---------- 客户端密钥（需自行获取） ----------
+# 用于请求签名，缺失时接口会返回鉴权失败
+wuling.client.secret=<填写你的 client secret>
+
+# ---------- 菱菱邦 OAuth 登录凭据（需自行获取） ----------
+# 用于「手机号 + 密码」登录换取 Token；不使用该登录方式可留空
+wuling.llb.client.id=<填写 llb client id>
+wuling.llb.client.secret=<填写 llb client secret>
+
+# ---------- 能耗数据中心网关凭据（需自行获取） ----------
+# 用于车辆能耗页；缺失时能耗页不可用，其它功能不受影响
+wuling.energy.app.key=<填写 energy app key>
+wuling.energy.app.secret=<填写 energy app secret>
+
+
+# ============================================================
+#  签名配置（通过环境变量提供，不写在文件里）
+# ============================================================
+#  未提供时，release 构建会自动回退到 debug 签名，仅用于本地验证。
+#  正式发布请设置以下环境变量：
+#
+#    export WULING_KEYSTORE_PATH=/path/to/your.keystore
+#    export WULING_KEYSTORE_PASSWORD=your_store_password
+#    export WULING_KEY_ALIAS=your_key_alias
+#    export WULING_KEY_PASSWORD=your_key_password
+#
+#  生成自己的 keystore：
+#    keytool -genkeypair -v -keystore my.keystore -alias mykey \
+#            -keyalg RSA -keysize 2048 -validity 10000
+# ============================================================

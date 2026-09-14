@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+ 备份规则：Token 与 BLE 钥匙属于敏感凭据，不参与云备份/换机迁移 -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="file" path="datastore" />
+        <exclude domain="sharedpref" path="wuling_token_store.xml" />
+        <exclude domain="sharedpref" path="amap_key.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="file" path="datastore" />
+        <exclude domain="sharedpref" path="wuling_token_store.xml" />
+        <exclude domain="sharedpref" path="amap_key.xml" />
+    </device-transfer>
+</data-extraction-rules>
