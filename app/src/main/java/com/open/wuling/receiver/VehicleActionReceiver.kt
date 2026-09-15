@@ -89,6 +89,10 @@ class VehicleActionReceiver : BroadcastReceiver() {
     }
 
     private suspend fun runCommand(context: Context, command: String, vin: String): String {
+        // 小组件/通知都是独立入口，VIN 来自落盘缓存；没缓存时指令无从下发，
+        // 明确告知「请打开 App 刷新一次」比静默失败好得多。
+        if (vin.isBlank()) return "车辆信息未就绪，请先打开 App 刷新一次"
+
         if (!APIConfig.isConfigured) {
             val token = runCatching { tokenStore.getToken() }.getOrDefault("")
             if (token.isBlank()) return "请先配置 Access Token"

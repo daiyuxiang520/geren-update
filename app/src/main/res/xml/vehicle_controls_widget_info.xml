@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 车辆快捷控制条元数据：4×1 网格（4 列宽 × 1 行高）
+     只放锁车/关窗/寻车三个按钮，不放状态信息（状态由 2×3 状态卡负责）。 -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="250dp"
+    android:minHeight="40dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="1"
+    android:updatePeriodMillis="1800000"
+    android:initialLayout="@layout/widget_vehicle_controls"
+    android:previewLayout="@layout/widget_vehicle_controls"
+    android:resizeMode="horizontal"
+    android:widgetCategory="home_screen" />

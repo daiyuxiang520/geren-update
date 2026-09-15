@@ -164,6 +164,19 @@
             </intent-filter>
         </receiver>
 
+        <!-- v64：4×1 快捷控制条（锁车 / 关窗 / 寻车） -->
+        <receiver
+            android:name="com.open.wuling.widget.VehicleControlsWidgetProvider"
+            android:exported="false"
+            android:label="车辆快捷控制">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/vehicle_controls_widget_info" />
+        </receiver>
+
         <!-- v63：后台车控指令执行器（通知 Action + 桌面小组件按钮） -->
         <receiver
             android:name="com.open.wuling.receiver.VehicleActionReceiver"

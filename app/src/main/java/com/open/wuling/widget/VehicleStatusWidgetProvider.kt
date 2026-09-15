@@ -46,7 +46,6 @@ class VehicleStatusWidgetProvider : AppWidgetProvider() {
         private const val PREFS = "widget_vehicle_status"
         private const val KEY_DATA = "data"
         private const val KEY_CAR_URL = "car_url"
-        private const val KEY_VIN = "vin"
         private const val CAR_IMG_FILE = "widget_car.png"
 
         private const val COLOR_OK = -0xd161bc      // 绿 #2E9E44
@@ -87,9 +86,6 @@ class VehicleStatusWidgetProvider : AppWidgetProvider() {
                     .edit()
                     .putString(KEY_DATA, json.toString())
                     .putString(KEY_CAR_URL, vehicle.carInfo?.image ?: "")
-                    // v63：快捷控制按钮需要 vin，一并落到小组件自己的缓存里
-                    //      （小组件是独立进程入口，不能依赖 App 内存里的 vehicle）
-                    .putString(KEY_VIN, vehicle.vin)
                     .apply()
                 ensureCarImage(context, vehicle.carInfo?.image ?: "")
                 pushAll(context)
@@ -270,34 +266,6 @@ class VehicleStatusWidgetProvider : AppWidgetProvider() {
 
                 // 点击卡片 → App 主页
                 views.setOnClickPendingIntent(R.id.widget_root, mainPendingIntent(context))
-
-                // v63：快捷控制按钮。指令由 VehicleActionReceiver 在后台执行，
-                //      完成后它会回调 requestRefresh 让本组件立刻拉一次新状态。
-                val vin = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                    .getString(KEY_VIN, "") ?: ""
-                if (vin.isNotBlank()) {
-                    views.setViewVisibility(R.id.widget_actions, View.VISIBLE)
-                    views.setOnClickPendingIntent(
-                        R.id.widget_btn_lock,
-                        com.open.wuling.receiver.VehicleActionReceiver.createPendingIntent(
-                            context, com.open.wuling.receiver.VehicleActionReceiver.CMD_LOCK, vin, 9201
-                        )
-                    )
-                    views.setOnClickPendingIntent(
-                        R.id.widget_btn_window,
-                        com.open.wuling.receiver.VehicleActionReceiver.createPendingIntent(
-                            context, com.open.wuling.receiver.VehicleActionReceiver.CMD_CLOSE_WINDOW, vin, 9202
-                        )
-                    )
-                    views.setOnClickPendingIntent(
-                        R.id.widget_btn_find,
-                        com.open.wuling.receiver.VehicleActionReceiver.createPendingIntent(
-                            context, com.open.wuling.receiver.VehicleActionReceiver.CMD_FIND_CAR, vin, 9203
-                        )
-                    )
-                } else {
-                    views.setViewVisibility(R.id.widget_actions, View.GONE)
-                }
 
                 manager.updateAppWidget(id, views)
             }

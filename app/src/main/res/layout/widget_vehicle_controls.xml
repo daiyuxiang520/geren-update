@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  车辆快捷控制条（4×1 网格，v64）
+  三等分按钮：锁车 / 关窗 / 寻车，点击由 VehicleActionReceiver 在后台执行指令。
+
+  为什么单独做一条而不是塞进状态卡：2×3 状态卡的内容高度约 147dp，本身就已接近
+  2 行格子的物理容量（约 155~165dp），再加 38dp 按钮行必然被裁掉（v63 实测就是这样）。
+  控制条独立成 4×1 后，状态卡保持原样，控制入口也不再受高度挤压。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_controls_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal"
+    android:gravity="center"
+    android:background="@drawable/widget_control_bg"
+    android:paddingStart="8dp"
+    android:paddingEnd="8dp"
+    android:paddingTop="6dp"
+    android:paddingBottom="6dp">
+
+    <LinearLayout
+        android:id="@+id/widget_ctrl_lock"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:background="@drawable/widget_button_bg">
+
+        <ImageView
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:src="@drawable/ic_action_lock"
+            android:contentDescription="锁车"
+            android:scaleType="fitCenter" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="5dp"
+            android:text="锁车"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:textColor="#2B3138"
+            android:maxLines="1" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/widget_ctrl_window"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:layout_marginStart="6dp"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:background="@drawable/widget_button_bg">
+
+        <ImageView
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:src="@drawable/ic_action_window"
+            android:contentDescription="关窗"
+            android:scaleType="fitCenter" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="5dp"
+            android:text="关窗"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:textColor="#2B3138"
+            android:maxLines="1" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/widget_ctrl_find"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:layout_marginStart="6dp"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:background="@drawable/widget_button_bg">
+
+        <ImageView
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:src="@drawable/ic_action_location"
+            android:contentDescription="寻车"
+            android:scaleType="fitCenter" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="5dp"
+            android:text="寻车"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:textColor="#2B3138"
+            android:maxLines="1" />
+    </LinearLayout>
+</LinearLayout>
