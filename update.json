@@ -1,8 +1,8 @@
 {
-  "versionCode": 54,
-  "versionName": "3.51.0-android16",
-  "updateLog": "v54 (3.51.0) 更新内容：\n1. 能耗数据页新增「能耗趋势」图表，支持月度/日度视角切换\n2. 月/年维度展示近 12 个月逐月能耗柱状图，可切换查看里程趋势\n3. 日维度展示当月逐日能耗柱状图，并附油耗折线\n4. 无数据的日期留空不绘制，与「值为 0」明确区分，避免误导",
+  "versionCode": 55,
+  "versionName": "3.52.0-android16",
+  "updateLog": "v55 (3.52.0) 更新内容：\n1. 能耗趋势图的柱子可点击，弹出该周期完整明细（里程、百公里能耗、行程数等）\n2. 新增「能量构成」饼图，直观展示电与油各占多大比例\n3. 日/月/年三个维度全部支持点击查看与饼图\n4. 修复日维度 X 轴日期标签错乱问题，现按 1/5/10/15/20/25/30 正确抽稀",
   "apkUrl": "https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "3b30165243962313e0c44f2e8898e725"
+  "md5": "48fcf9d0c81040cb82d5b38c33de7ad8"
 }
