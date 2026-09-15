@@ -1,8 +1,8 @@
 {
-  "versionCode": 53,
-  "versionName": "3.50.0-android16",
-  "updateLog": "v53 (3.50.0) 更新内容：\n1. 首页「快捷控制」状态行新增车窗状态：显示「车窗全关」或「车窗未关」\n2. 车窗未关时状态行转为橙色提醒，一眼就能看出有窗没关\n3. 判定同时参考四窗状态与开度，两者不一致时按「未关」处理，避免漏报风险",
+  "versionCode": 54,
+  "versionName": "3.51.0-android16",
+  "updateLog": "v54 (3.51.0) 更新内容：\n1. 能耗数据页新增「能耗趋势」图表，支持月度/日度视角切换\n2. 月/年维度展示近 12 个月逐月能耗柱状图，可切换查看里程趋势\n3. 日维度展示当月逐日能耗柱状图，并附油耗折线\n4. 无数据的日期留空不绘制，与「值为 0」明确区分，避免误导",
   "apkUrl": "https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "8194cc4d9d150b163daf8c6cb70a8b4d"
+  "md5": "3b30165243962313e0c44f2e8898e725"
 }
