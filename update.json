@@ -1,8 +1,8 @@
 {
-  "versionCode": 59,
-  "versionName": "3.56.0-android16",
-  "updateLog": "v59 (3.56.0) 更新内容：\n1. 「调试日志」全量重做：五菱 API 请求/响应真正接入日志（此前 release 包下未记录任何 API 报文，面板里只有地图/天气零星日志），能耗 API 同步接入\n2. 敏感信息脱敏后落日志：密码/secret 打码、token 留前 6 位、手机号留前 3 后 4、VIN 留后 4 位\n3. 日志持久化：按天落盘、重启可查、自动保留 3 天 / 2MB；「记录」开关重启后保持\n4. 面板升级：等级 D/I/W/E 筛选、Tag 筛选、关键词搜索、打开期间每秒自动刷新\n5. 单条点击复制完整日志；详情点击展开；新增「导出」把筛选结果通过系统分享发出\n6. 蓝牙钥匙日志并轨进统一日志（tag=BLE），蓝牙钥匙页原有日志列表行为不变",
+  "versionCode": 60,
+  "versionName": "3.57.0",
+  "updateLog": "v60 (3.57.0) 更新内容：\n1. 版本号去掉「-android16」后缀，现在显示为 v3.57.0\n2. 仓库 README 精简（264 行 → 119 行）\n无其他功能变化",
   "apkUrl": "https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "67e9871735889678f1d8858aae1aa9c0"
+  "md5": "b2523b131bd0f4ec72552288ac1695b3"
 }
