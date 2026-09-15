@@ -1,8 +1,8 @@
 {
-  "versionCode": 60,
-  "versionName": "3.57.0",
-  "updateLog": "v60 (3.57.0) 更新内容：\n1. 版本号去掉「-android16」后缀，现在显示为 v3.57.0\n2. 仓库 README 精简（264 行 → 119 行）\n无其他功能变化",
+  "versionCode": 61,
+  "versionName": "3.58.0",
+  "updateLog": "v61 (3.58.0) 更新内容：\n1. 新增「离车提醒」：车窗未关（注明哪扇）/ 车门未锁 / 后备箱未关时发送系统通知，恢复正常自动撤回\n2. 同一异常持续期间只提醒一次，不会重复轰炸\n3. 详情页顶部新增橙色提醒条，打开即可见当前异常项\n4. 「消息通知」设置新增离车提醒开关：总开关 + 车窗/车门/后备箱分项开关\n5. 桌面小组件新增红色异常角标（⚠锁/窗/箱），未锁/窗未关状态行升级为红色\n提醒时机：App 打开期间每次状态刷新后检测（前台约每 30 秒一次）",
   "apkUrl": "https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "b2523b131bd0f4ec72552288ac1695b3"
+  "md5": "79c320617544f2479c30c3353223db33"
 }
