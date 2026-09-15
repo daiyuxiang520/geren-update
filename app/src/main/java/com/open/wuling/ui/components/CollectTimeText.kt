@@ -2,9 +2,10 @@ package com.open.wuling.ui.components
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -38,7 +39,8 @@ fun CollectTimeText(
     val epoch = remember(collectTime) { FormatUtils.parseCollectTime(collectTime) }
 
     // 每分钟 tick 一次，驱动「N 分钟前」走表（数据本身 30 秒才刷一次，分钟级足够）
-    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    // 注：用 mutableStateOf 而非 mutableLongStateOf（后者要求 compose runtime 1.5+）
+    var now by remember { mutableStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
         while (true) {
             delay(60_000L)
