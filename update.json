@@ -1,8 +1,8 @@
 {
-  "versionCode": 44,
-  "versionName": "3.41.0-android16",
-  "updateLog": "🖼️ 「我的」页车辆图与首页对齐：改为圆角方框、完整显示整车（Fit），去掉蓝色圆形底圈。\\n📱 移除手机号前的手机图标，手机号直接以大标题显示。\\n🗑️ 删除无效的「编辑」按钮，手机号列更宽不再被截断。\\n📌 包名不变：com.wuling.app.repack，可直接覆盖安装。",
+  "versionCode": 45,
+  "versionName": "3.42.0-android16",
+  "updateLog": "v45 (3.42.0) 更新内容：\n1. 新增隐私政策同意门（首次启动需同意后才能使用，符合上架合规要求）\n2. 友盟统计改为延迟初始化：仅在用户同意隐私政策后才初始化，同意前不采集任何信息\n3. 修复崩溃上报：串联友盟崩溃捕获器，App 崩溃可正常上报\n4. 新增错误日志上报：应用运行中的错误/警告自动上报友盟「错误分析」\n5. 新增关键节点埋点：登录结果、检查更新、远程控制指令",
   "apkUrl": "https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "0805b677accedc7150f65bcf80504508"
+  "md5": "f066c5f284b20587a0f89a16b0172f42"
 }

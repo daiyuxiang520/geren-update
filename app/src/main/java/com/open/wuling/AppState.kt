@@ -9,6 +9,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import com.open.wuling.BuildConfig
+import com.open.wuling.analytics.UmengAnalytics
 import com.open.wuling.ble.BleAutoLockManager
 import com.open.wuling.data.update.AppUpdateInfo
 import com.open.wuling.data.update.UpdateChecker
@@ -612,6 +613,12 @@ class AppState @Inject constructor(
                     success = true,
                     message = "${command.displayName}成功"
                 )
+                // 埋点：远程控制成功
+                UmengAnalytics.event(
+                    appContext,
+                    "remote_command",
+                    mapOf("command" to command.name, "result" to "success")
+                )
                 // 记录刚刚通过命令更新的本地状态
                 val preserveLockState = command == ControlCommand.LOCK || command == ControlCommand.UNLOCK
                 val preserveClimateState = command == ControlCommand.CLIMATE_ON || command == ControlCommand.CLIMATE_OFF
@@ -628,6 +635,16 @@ class AppState @Inject constructor(
                     message = error.message ?: "操作失败"
                 )
                 _isLoading.value = false
+                // 埋点：远程控制失败（带指令名与原因）
+                UmengAnalytics.event(
+                    appContext,
+                    "remote_command",
+                    mapOf(
+                        "command" to command.name,
+                        "result" to "fail",
+                        "reason" to (error.message ?: "操作失败").take(80)
+                    )
+                )
             }
 
             // 自动消失提示
@@ -653,9 +670,28 @@ class AppState @Inject constructor(
                 .onSuccess { token ->
                     saveAndConfigureToken(token)
                     onResult(true, "登录成功，Token 已自动保存")
+                    // 埋点：登录成功（手机号脱敏）
+                    UmengAnalytics.event(
+                        appContext,
+                        "login_result",
+                        mapOf(
+                            "result" to "success",
+                            "mobile" to UmengAnalytics.maskPhone(mobile.trim())
+                        )
+                    )
                 }
                 .onFailure { error ->
-                    onResult(false, error.message ?: "登录失败")
+                    val msg = error.message ?: "登录失败"
+                    onResult(false, msg)
+                    // 埋点：登录失败（带原因，便于友盟看失败分布）
+                    UmengAnalytics.event(
+                        appContext,
+                        "login_result",
+                        mapOf(
+                            "result" to "fail",
+                            "reason" to msg.take(80)
+                        )
+                    )
                 }
         }
     }
@@ -879,12 +915,28 @@ class AppState @Inject constructor(
                 _selectedMirror.value = null    // 每次新弹窗回到「自动」，手动选择仅本次生效
                 _mirrorSpeeds.value = emptyMap() // 旧测速结果作废，由弹窗重新测
                 _pendingUpdate.value = info
+                // 埋点：检查更新发现新版本（manual 区分手动/自动，便于分析更新转化）
+                UmengAnalytics.event(
+                    appContext,
+                    "check_update",
+                    mapOf(
+                        "result" to "has_update",
+                        "manual" to manual.toString(),
+                        "local" to BuildConfig.VERSION_NAME,
+                        "remote" to info.versionName
+                    )
+                )
             } else if (manual) {
                 Toast.makeText(
                     appContext,
                     "已是最新版本 (v${BuildConfig.VERSION_NAME})",
                     Toast.LENGTH_SHORT
                 ).show()
+                UmengAnalytics.event(
+                    appContext,
+                    "check_update",
+                    mapOf("result" to "latest", "manual" to "true", "local" to BuildConfig.VERSION_NAME)
+                )
             }
         }
     }

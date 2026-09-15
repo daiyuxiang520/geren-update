@@ -43,10 +43,12 @@ import coil.compose.AsyncImage
 import com.open.wuling.data.local.AmapKeyManager
 import com.open.wuling.data.local.BleAutoLockPreferences
 import com.open.wuling.data.local.WeatherInfo
+import com.open.wuling.analytics.UmengInitializer
 import com.open.wuling.ui.components.ACControlSheet
 import com.open.wuling.ui.components.BleAutoLockSheet
 import com.open.wuling.ui.components.PermissionDeniedDialog
 import com.open.wuling.ui.components.PermissionRequestDialog
+import com.open.wuling.ui.components.PrivacyConsentDialog
 import com.open.wuling.ui.components.UpdateDialog
 import com.open.wuling.ui.components.openAppSettings
 import com.open.wuling.ui.screens.DetailScreen
@@ -230,6 +232,11 @@ fun AppContent(
     onRequestPermissions: (PermissionType, (Boolean) -> Unit) -> Unit
 ) {
     val themePrefs = viewModel.themePreferences
+    val privacyPrefs = viewModel.privacyPreferences
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    val privacyAgreed by privacyPrefs.privacyAgreedFlow.collectAsState(initial = null)
 
     val themeMode by themePrefs.themeModeFlow.collectAsState(initial = 0)
     val useCustomColors by themePrefs.useCustomColorsFlow.collectAsState(initial = false)
@@ -279,13 +286,41 @@ fun AppContent(
             bleAutoLockPreferences = bleAutoLockPreferences,
             onRequestPermissions = onRequestPermissions
         )
+
+        // 隐私政策同意门：仅在「未同意（false）」时展示；null=首次读取中，不闪弹窗
+        if (privacyAgreed == false) {
+            PrivacyConsentDialog(
+                onAgree = {
+                    scope.launch {
+                        privacyPrefs.setAgreed(true)
+                        // 同意后才初始化友盟（合规：同意前不采集）
+                        UmengInitializer.initIfAgreed(context.applicationContext, agreedByUser = true)
+                        // 串联崩溃处理器：本地日志 + 友盟崩溃采集
+                        Thread.setDefaultUncaughtExceptionHandler(
+                            UmengInitializer.chainCrashHandler { thread, throwable ->
+                                android.util.Log.e(
+                                    "WulingApp",
+                                    "Uncaught exception in thread ${thread.name}",
+                                    throwable
+                                )
+                            }
+                        )
+                    }
+                },
+                onDisagree = {
+                    // 暂不同意：退出应用（合规要求不静默降级采集）
+                    (context as? android.app.Activity)?.finishAffinity()
+                }
+            )
+        }
     }
 }
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
     val appState: AppState,
-    val themePreferences: com.open.wuling.data.local.ThemePreferences
+    val themePreferences: com.open.wuling.data.local.ThemePreferences,
+    val privacyPreferences: com.open.wuling.data.local.PrivacyPreferences
 ) : ViewModel() {
 
 }
