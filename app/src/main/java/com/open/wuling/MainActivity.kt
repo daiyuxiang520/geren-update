@@ -37,12 +37,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import coil.compose.AsyncImage
 import com.open.wuling.data.local.AmapKeyManager
 import com.open.wuling.data.local.BleAutoLockPreferences
 import com.open.wuling.data.local.WeatherInfo
+import com.open.wuling.analytics.UmengAnalytics
 import com.open.wuling.analytics.UmengInitializer
 import com.open.wuling.ui.components.ACControlSheet
 import com.open.wuling.ui.components.BleAutoLockSheet
@@ -92,6 +95,17 @@ class MainActivity : ComponentActivity() {
         bleAutoLockPreferences = BleAutoLockPreferences(this)
 
         enableEdgeToEdge()
+
+        // 友盟会话埋点：进入前台/后台驱动 session（解决「使用时长=0、留存无数据」）
+        lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onStart(owner: LifecycleOwner) {
+                UmengAnalytics.onAppForeground(this@MainActivity)
+            }
+            override fun onStop(owner: LifecycleOwner) {
+                UmengAnalytics.onAppBackground(this@MainActivity)
+            }
+        })
+
         setContent {
             AppContent(
                 bleAutoLockPreferences = bleAutoLockPreferences,

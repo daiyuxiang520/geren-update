@@ -76,4 +76,77 @@ object UmengAnalytics {
             phone.take(1) + "***" + phone.takeLast(1)
         }
     }
+
+    // ===================== 会话埋点（解决「使用时长=0、留存无数据」）=====================
+
+    @Volatile
+    private var appInForeground = false
+    /** 进入前台早于友盟初始化时缓存的 context，init 成功后补齐 onResume */
+    @Volatile
+    private var pendingResumeCtx: Context? = null
+
+    /**
+     * Activity 进入前台时调用（建议挂在 Lifecycle ON_START）。
+     * 友盟初始化完成前只记录状态（不采集），待 [flushPending] 补齐 session，
+     * 从而守住「用户同意隐私前不采集」的合规红线。
+     */
+    fun onAppForeground(context: Context) {
+        appInForeground = true
+        if (!UmengInitializer.isInited()) {
+            pendingResumeCtx = context.applicationContext
+            return
+        }
+        try {
+            MobclickAgent.onResume(context)
+        } catch (_: Throwable) {
+            // 统计失败不影响业务
+        }
+    }
+
+    /**
+     * Activity 进入后台时调用（建议挂在 Lifecycle ON_STOP）。
+     * 与 [onAppForeground] 成对，用于正确累计使用时长与活跃。
+     */
+    fun onAppBackground(context: Context) {
+        appInForeground = false
+        pendingResumeCtx = null
+        if (!UmengInitializer.isInited()) return
+        try {
+            MobclickAgent.onPause(context)
+        } catch (_: Throwable) {
+            // 统计失败不影响业务
+        }
+    }
+
+    /**
+     * 友盟初始化成功后调用：补齐「进入前台早于 init」时漏掉的 session，
+     * 并补发初始化前暂存的事件（如 [app_launch]）。由 [UmengInitializer.initIfAgreed] 在成功末尾调用。
+     */
+    fun flushPending(context: Context) {
+        if (appInForeground) {
+            val ctx = pendingResumeCtx ?: context.applicationContext
+            try {
+                MobclickAgent.onResume(ctx)
+            } catch (_: Throwable) {
+                // 统计失败不影响业务
+            }
+            pendingResumeCtx = null
+        }
+        val list = synchronized(pendingEvents) {
+            val c = pendingEvents.toList()
+            pendingEvents.clear()
+            c
+        }
+        for ((id, params) in list) event(context, id, params)
+    }
+
+    /** init 前也想上报的事件：暂存，init 成功后由 [flushPending] 补发 */
+    private val pendingEvents = mutableListOf<Pair<String, Map<String, String>>>()
+    fun eventPending(context: Context, eventId: String, params: Map<String, String> = emptyMap()) {
+        if (UmengInitializer.isInited()) {
+            event(context, eventId, params)
+        } else {
+            synchronized(pendingEvents) { pendingEvents.add(eventId to params) }
+        }
+    }
 }

@@ -9,6 +9,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.open.wuling.MainActivity
 import com.open.wuling.R
+import com.open.wuling.analytics.UmengAnalytics
 import com.open.wuling.data.local.VehicleAlertPreferences
 import com.open.wuling.data.model.Vehicle
 import com.open.wuling.data.model.VehicleStatus
@@ -162,6 +163,9 @@ object VehicleAlertManager {
     }
 
     private fun notifyAlerts(ctx: Context, vehicle: Vehicle, alerts: List<String>) {
+        // 埋点：实际发出安全提醒通知（车窗/车门/后备箱）
+        UmengAnalytics.event(ctx, "alert_triggered", mapOf("type" to "safety", "detail" to alerts.first().take(40)))
+
         val intent = Intent(ctx, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
@@ -270,6 +274,9 @@ object VehicleAlertManager {
     }
 
     private fun notifyCharge(ctx: Context, title: String, text: String) {
+        // 埋点：实际发出充电/电量提醒通知
+        UmengAnalytics.event(ctx, "alert_triggered", mapOf("type" to "charge", "detail" to title.take(40)))
+
         val intent = Intent(ctx, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }

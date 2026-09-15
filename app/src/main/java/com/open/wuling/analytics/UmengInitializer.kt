@@ -3,6 +3,7 @@ package com.open.wuling.analytics
 import android.content.Context
 import android.util.Log
 import com.open.wuling.BuildConfig
+import com.open.wuling.analytics.UmengAnalytics
 import com.umeng.analytics.MobclickAgent
 import com.umeng.commonsdk.UMConfigure
 import java.util.concurrent.atomic.AtomicBoolean
@@ -66,6 +67,10 @@ object UmengInitializer {
             umengHandler = Thread.getDefaultUncaughtExceptionHandler()
 
             Log.i(TAG, "友盟初始化完成（agreedByUser=$agreedByUser）")
+            // 调试期输出友盟日志（release 自动关闭，便于本地验证 ekv 上报）
+            UMConfigure.setLogEnabled(BuildConfig.DEBUG)
+            // 补齐初始化前漏掉的 session 与暂存事件（app_launch 等）
+            UmengAnalytics.flushPending(context)
         } catch (t: Throwable) {
             // 统计 SDK 问题绝不能拖垮 App
             inited.set(false)

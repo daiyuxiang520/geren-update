@@ -13,9 +13,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.open.wuling.AppState
+import com.open.wuling.analytics.UmengAnalytics
 import com.open.wuling.data.update.UpdateConfig
 
 /**
@@ -28,6 +30,7 @@ import com.open.wuling.data.update.UpdateConfig
  */
 @Composable
 fun UpdateDialog(appState: AppState) {
+    val context = LocalContext.current
     val info by appState.pendingUpdate.collectAsState()
     val progress by appState.updateProgress.collectAsState()
     val error by appState.updateError.collectAsState()
@@ -53,14 +56,20 @@ fun UpdateDialog(appState: AppState) {
         confirmButton = {
             Button(
                 enabled = !downloading,
-                onClick = { appState.startUpdateInstall() }
+                onClick = {
+                    UmengAnalytics.event(context, "update_dialog_action", mapOf("result" to if (downloading) "retry" else "confirm"))
+                    appState.startUpdateInstall()
+                }
             ) {
                 Text(if (downloading) "下载中…" else if (error != null) "重试" else "立即更新")
             }
         },
         dismissButton = if (force || downloading) null else {
             {
-                TextButton(onClick = { appState.dismissUpdate() }) {
+                TextButton(onClick = {
+                    UmengAnalytics.event(context, "update_dialog_action", mapOf("result" to "later"))
+                    appState.dismissUpdate()
+                }) {
                     Text("稍后")
                 }
             }
@@ -143,7 +152,10 @@ fun UpdateDialog(appState: AppState) {
                         fontSize = 13.sp
                     )
                     Spacer(Modifier.height(8.dp))
-                    TextButton(onClick = { appState.openApkInBrowser() }) {
+                    TextButton(onClick = {
+                        UmengAnalytics.event(context, "update_dialog_action", mapOf("result" to "browser"))
+                        appState.openApkInBrowser()
+                    }) {
                         Text("改用浏览器下载")
                     }
                 }

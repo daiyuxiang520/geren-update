@@ -18,6 +18,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.open.wuling.MainActivity
 import com.open.wuling.R
+import com.open.wuling.analytics.UmengAnalytics
 import com.open.wuling.data.local.BleAutoLockPreferences
 import com.open.wuling.util.AppLogger
 import com.open.wuling.util.BleAuthUtils
@@ -489,6 +490,9 @@ class BleAutoLockManager(
             intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
+
+        // 埋点：蓝牙自动解锁成功
+        UmengAnalytics.event(context, "ble_unlock", mapOf("result" to "success"))
 
         val notification = NotificationCompat.Builder(context, vehicleStateChannelId)
             .setContentTitle("车辆已解锁")

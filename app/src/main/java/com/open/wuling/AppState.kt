@@ -225,6 +225,9 @@ class AppState @Inject constructor(
         // App 冷启动自动检查更新（与登录态无关，网络未就绪时静默失败）
         scope.launch { checkAppUpdate() }
 
+        // 埋点：冷启动（按版本分布活跃用户；未 init 时暂存，init 成功后由 flushPending 补发）
+        UmengAnalytics.eventPending(appContext, "app_launch", mapOf("version" to BuildConfig.VERSION_NAME))
+
         // 恢复上次成功的加速源 + 注册回写回调（减少无谓的重试开销）
         run {
             val prefs = context.getSharedPreferences(CACHE_PREFS, Context.MODE_PRIVATE)
@@ -520,6 +523,10 @@ class AppState @Inject constructor(
                 // v64：控制条只依赖 VIN，缓存落盘后重绑一次 —— 刷新后桌面按钮即刻可用
                 com.open.wuling.widget.VehicleControlsWidgetProvider.pushAll(context)
 
+                // 埋点：App 主动刷新车辆状态成功 + 同步到桌面小组件
+                UmengAnalytics.event(appContext, "refresh_status", mapOf("result" to "success", "quick" to isQuick.toString()))
+                UmengAnalytics.event(appContext, "widget_refresh", mapOf("result" to "success"))
+
                 // 「离车提醒」检测（车窗未关/车门未锁/后备箱未关 → 系统通知；恢复自动撤回）（v61）
                 com.open.wuling.util.VehicleAlertManager.onStatusRefreshed(finalVehicle)
 
@@ -527,6 +534,8 @@ class AppState @Inject constructor(
                 com.open.wuling.data.local.ParkingHistoryStore.record(context, finalVehicle)
             }.onFailure { error ->
                 _errorMessage.value = error.message
+                // 埋点：App 主动刷新车辆状态失败
+                UmengAnalytics.event(appContext, "refresh_status", mapOf("result" to "fail"))
             }
 
             if (showLoading) {

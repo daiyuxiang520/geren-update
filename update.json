@@ -1,8 +1,8 @@
 {
-  "versionCode": 65,
-  "versionName": "3.62.0",
-  "updateLog": "v65 (3.62.0) 更新内容：\n1. 更新源接入 Gitee 国内镜像，版本检测与 APK 下载全程不再依赖第三方公益代理\n2. 国内自动优先走 Gitee（直连通常几十毫秒），15 个 GitHub 加速源保留为兜底，Gitee 不可用时自动接管\n3. 海外用户不受影响，仍按原有 GitHub 加速链路分发\n4. 开源仓库补足 v50-v55 期间遗漏同步的源码（纠偏、能耗趋势图、3D 地图等），仓库代码与实际 APK 现已完全一致",
-  "apkUrl": "https://gitee.com/daiyuxiang520/geren-update/releases/download/v65/wuling-assistant.apk",
+  "versionCode": 66,
+  "versionName": "3.63.0",
+  "updateLog": "v66 (3.63.0) 更新内容：\n1. 修复友盟 U-App 统计：补全会话埋点（MobclickAgent.onResume/onPause），恢复活跃用户、使用时长、留存等基础指标\n2. 扩充埋点事件：app_launch（按版本分布活跃）、refresh_status（车况刷新成败）、widget_refresh（同步桌面小组件）、ble_unlock（蓝牙自动解锁）、alert_triggered（安全/充电提醒命中）、update_dialog_action（更新弹窗点击）\n3. 更新源仍优先 Gitee 国内镜像，APK 下载免代理直连，海外走 GitHub 加速链路兜底",
+  "apkUrl": "https://gitee.com/daiyuxiang520/geren-update/releases/download/v66/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "f157e9f4a798a65396708856e9284d2a"
+  "md5": "938371a1bab4376a673f9447a601782a"
 }
