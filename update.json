@@ -1,8 +1,8 @@
 {
-  "versionCode": 45,
-  "versionName": "3.42.0-android16",
-  "updateLog": "v45 (3.42.0) 更新内容：\n1. 新增隐私政策同意门（首次启动需同意后才能使用，符合上架合规要求）\n2. 友盟统计改为延迟初始化：仅在用户同意隐私政策后才初始化，同意前不采集任何信息\n3. 修复崩溃上报：串联友盟崩溃捕获器，App 崩溃可正常上报\n4. 新增错误日志上报：应用运行中的错误/警告自动上报友盟「错误分析」\n5. 新增关键节点埋点：登录结果、检查更新、远程控制指令",
+  "versionCode": 46,
+  "versionName": "3.43.0-android16",
+  "updateLog": "v46 (3.43.0) 更新内容：\n1. 「我的」页顶部车辆卡片支持点击，弹出完整车辆信息详情\n2. 车辆信息包含：车型/型号/配置/VIN/车牌/颜色/年份/VSN/等级/动力类型/供应商/购买信息/绑定状态/蓝牙钥匙/摇晃解锁\n3. 无需切换到「详情」Tab 即可查看车辆信息\n4. 车辆卡右侧新增箭头提示，可点击更直观",
   "apkUrl": "https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "f066c5f284b20587a0f89a16b0172f42"
+  "md5": "36e8fde10d0743f7ca904062f1e329bd"
 }

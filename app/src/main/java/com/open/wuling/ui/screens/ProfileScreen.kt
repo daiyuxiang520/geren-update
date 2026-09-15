@@ -28,6 +28,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.ElectricBolt
 import androidx.compose.material.icons.filled.Info
@@ -61,6 +62,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -96,8 +98,10 @@ import com.open.wuling.util.AppLogger
 import com.open.wuling.ui.theme.PrimaryGreen
 import com.open.wuling.ui.theme.PrimaryOrange
 import com.open.wuling.ui.theme.PrimaryRed
+import com.open.wuling.ui.components.DetailRow
 import com.open.wuling.ui.components.OemKeepAliveSheet
 import com.open.wuling.ui.theme.LocalCardAlpha
+import com.open.wuling.util.FormatUtils
 
 @Composable
 fun ProfileScreen(
@@ -119,6 +123,7 @@ fun ProfileScreen(
     var showThemeSettings by remember { mutableStateOf(false) }
     var showKeepAliveSheet by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
+    var showVehicleInfo by remember { mutableStateOf(false) }
     var tokenInput by remember { mutableStateOf("") }
     var loginMobile by remember { mutableStateOf("") }
     var loginPassword by remember { mutableStateOf("") }
@@ -150,9 +155,11 @@ fun ProfileScreen(
             .verticalScroll(scrollState)
             .padding(16.dp)
     ) {
-        // Profile Header - 车辆信息
+        // Profile Header - 车辆信息（点击查看完整车辆详情）
         Card(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { showVehicleInfo = true },
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = LocalCardAlpha.current)),
             shape = RoundedCornerShape(20.dp)
         ) {
@@ -209,6 +216,15 @@ fun ProfileScreen(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
+
+                // 可点击提示：查看完整车辆信息
+                Spacer(modifier = Modifier.width(8.dp))
+                Icon(
+                    imageVector = Icons.Filled.ChevronRight,
+                    contentDescription = "查看车辆信息",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(22.dp)
+                )
             }
         }
 
@@ -734,6 +750,109 @@ fun ProfileScreen(
     // 关于我们（开源致谢 + 版本信息）
     if (showAboutDialog) {
         AboutDialog(onDismiss = { showAboutDialog = false })
+    }
+
+    // 车辆信息详情（点击顶部车辆卡进入，内容与「详情」页车辆信息一致）
+    if (showVehicleInfo) {
+        VehicleInfoDialog(vehicle = selectedVehicle, onDismiss = { showVehicleInfo = false })
+    }
+}
+
+/**
+ * 车辆信息详情弹层。
+ *
+ * 展示内容与「详情」页的「车辆信息」区块**完全一致**（同一套接口字段），
+ * 从「我的」页点击顶部车辆卡进入，无需切到「详情」Tab。
+ *
+ * @param vehicle 当前选中车辆（null 时展示未绑定提示）
+ */
+@Composable
+private fun VehicleInfoDialog(vehicle: com.open.wuling.data.model.Vehicle?, onDismiss: () -> Unit) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 560.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = RoundedCornerShape(20.dp)
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                // 标题栏
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 20.dp, end = 12.dp, top = 16.dp, bottom = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.DirectionsCar,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "车辆信息",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "关闭",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Divider(color = MaterialTheme.colorScheme.surfaceVariant)
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 20.dp, vertical = 12.dp)
+                ) {
+                    if (vehicle == null) {
+                        Text(
+                            text = "暂无绑定车辆，请先配置 Token 并刷新",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(vertical = 24.dp)
+                        )
+                    } else {
+                        val info = vehicle.carInfo
+                        if (info != null) {
+                            DetailRow("车型", FormatUtils.safeString(info.carTypeName.ifEmpty { vehicle.name }))
+                            DetailRow("型号", FormatUtils.safeString(info.model.ifEmpty { vehicle.model }))
+                            DetailRow("配置", FormatUtils.safeString(info.seriesCode))
+                            DetailRow("VIN", FormatUtils.safeString(info.vin.ifEmpty { vehicle.vin }))
+                            DetailRow("车牌", FormatUtils.safeString(info.carPlate.ifEmpty { vehicle.licensePlate }))
+                            DetailRow("颜色", FormatUtils.safeString(info.colorName.ifEmpty { info.colorCode }))
+                            DetailRow("年份", FormatUtils.safeString(info.carYear))
+                            DetailRow("VSN", FormatUtils.safeString(info.vsn))
+                            DetailRow("等级", FormatUtils.safeString(info.level))
+                            DetailRow("动力类型", FormatUtils.getPowerTypeDisplay(vehicle))
+                            DetailRow("供应商", FormatUtils.safeString(info.providerCode))
+                            DetailRow("购买人", FormatUtils.safeString(info.purchaseUserName))
+                            DetailRow("购买店号", FormatUtils.safeString(info.purchaseShopNum))
+                            DetailRow("购车日期", FormatUtils.formatDate(info.purchaseDate))
+                            DetailRow("绑定手机", FormatUtils.safeString(info.bindCarUserMobile))
+                            DetailRow("绑定状态", if (info.finishBind) "已绑定" else "未绑定")
+                            DetailRow("蓝牙钥匙", FormatUtils.safeString(info.bluetoothKeyConnectMark))
+                            DetailRow("摇晃解锁", if (info.shakeLock == 1) "开启" else "关闭")
+                        } else {
+                            DetailRow("车型", FormatUtils.safeString(vehicle.name))
+                            DetailRow("型号", FormatUtils.safeString(vehicle.model))
+                            DetailRow("车牌", FormatUtils.safeString(vehicle.licensePlate))
+                            DetailRow("VIN", FormatUtils.safeString(vehicle.vin))
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

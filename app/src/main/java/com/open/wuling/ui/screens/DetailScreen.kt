@@ -41,6 +41,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.open.wuling.data.model.Vehicle
+import com.open.wuling.ui.components.DetailRow
+import com.open.wuling.ui.components.DetailSectionHeader
 import com.open.wuling.ui.theme.*
 import com.open.wuling.ui.theme.LocalCardAlpha
 import com.open.wuling.util.FormatUtils
@@ -359,52 +361,4 @@ fun DetailScreen(
     }
 }
 
-// ====== Section Header ======
-@Composable
-private fun DetailSectionHeader(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, color: Color) {
-    Row(
-        modifier = Modifier.padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = color,
-            modifier = Modifier.padding(end = 8.dp)
-        )
-        Text(
-            text = title,
-            fontSize = 17.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-    }
-}
-
-// ====== Detail Row ======
-@Composable
-private fun DetailRow(label: String, value: String, isWarning: Boolean = false) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = label,
-            fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = value,
-            fontSize = 14.sp,
-            color = if (isWarning) PrimaryRed else MaterialTheme.colorScheme.onSurface,
-            fontWeight = FontWeight.Medium
-        )
-    }
-    Divider(
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        thickness = 0.5.dp
-    )
-}
+// DetailSectionHeader / DetailRow 已提升为公共组件，见 ui/components/DetailRows.kt
