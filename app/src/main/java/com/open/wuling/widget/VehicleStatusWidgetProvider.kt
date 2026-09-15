@@ -51,6 +51,7 @@ class VehicleStatusWidgetProvider : AppWidgetProvider() {
         private const val COLOR_OK = -0xd161bc      // 绿 #2E9E44
         private const val COLOR_WARN = -0x377600    // 黄 #C88A00
         private const val COLOR_NONE = -0x656058    // 灰 #9A9FA8
+        private const val COLOR_RED = 0xFFE53935.toInt()   // 红 #E53935（v61 异常角标/异常状态行）
 
         /** 缓存快照（SharedPreferences JSON） */
         private data class Snapshot(
@@ -60,7 +61,8 @@ class VehicleStatusWidgetProvider : AppWidgetProvider() {
             val hasFuel: Boolean,
             val powerOn: Boolean?,
             val locked: Boolean?,
-            val windowsClosed: Boolean?
+            val windowsClosed: Boolean?,
+            val trunkClosed: Boolean? = null
         )
 
         // ============== 供 AppState 调用：App 内刷新成功后同步到桌面 ==============
@@ -79,6 +81,7 @@ class VehicleStatusWidgetProvider : AppWidgetProvider() {
                     .put("windowsClosed", !(
                             s.windows.frontLeft || s.windows.frontRight ||
                                     s.windows.rearLeft || s.windows.rearRight))
+                    .put("trunkClosed", !s.doors.trunk)
                 context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                     .edit()
                     .putString(KEY_DATA, json.toString())
@@ -149,7 +152,8 @@ class VehicleStatusWidgetProvider : AppWidgetProvider() {
                     hasFuel = j.optInt("fuel", -1) >= 0,
                     powerOn = if (j.has("powerOn")) j.optBoolean("powerOn") else null,
                     locked = if (j.has("locked")) j.optBoolean("locked") else null,
-                    windowsClosed = if (j.has("windowsClosed")) j.optBoolean("windowsClosed") else null
+                    windowsClosed = if (j.has("windowsClosed")) j.optBoolean("windowsClosed") else null,
+                    trunkClosed = if (j.has("trunkClosed")) j.optBoolean("trunkClosed") else null
                 )
             } else null
         } catch (e: Exception) {
@@ -214,9 +218,10 @@ class VehicleStatusWidgetProvider : AppWidgetProvider() {
                 views.setTextViewText(R.id.widget_power_text, powerText)
                 views.setTextColor(R.id.widget_power_text, powerColor)
 
+                // v61：未锁/车窗未关升级为红色（此前黄色，与「下电」同色分不出轻重）
                 val (lockText, lockColor) = when (snap?.locked) {
                     true -> "🔒 已锁" to COLOR_OK
-                    false -> "🔓 未锁" to COLOR_WARN
+                    false -> "🔓 未锁" to COLOR_RED
                     null -> "--" to COLOR_NONE
                 }
                 views.setTextViewText(R.id.widget_lock_text, lockText)
@@ -224,11 +229,24 @@ class VehicleStatusWidgetProvider : AppWidgetProvider() {
 
                 val (winText, winColor) = when (snap?.windowsClosed) {
                     true -> "✅ 车窗已关" to COLOR_OK
-                    false -> "⚠️ 车窗未关" to COLOR_WARN
+                    false -> "⚠️ 车窗未关" to COLOR_RED
                     null -> "--" to COLOR_NONE
                 }
                 views.setTextViewText(R.id.widget_window_text, winText)
                 views.setTextColor(R.id.widget_window_text, winColor)
+
+                // v61：车图右上角红色角标，汇总当前异常项（锁=车门未锁，窗=车窗未关，箱=后备箱未关）
+                val badgeParts = buildList {
+                    if (snap?.locked == false) add("锁")
+                    if (snap?.windowsClosed == false) add("窗")
+                    if (snap?.trunkClosed == false) add("箱")
+                }
+                if (badgeParts.isNotEmpty()) {
+                    views.setTextViewText(R.id.widget_alert_badge, "⚠" + badgeParts.joinToString("/"))
+                    views.setViewVisibility(R.id.widget_alert_badge, View.VISIBLE)
+                } else {
+                    views.setViewVisibility(R.id.widget_alert_badge, View.GONE)
+                }
 
                 // 点击卡片 → App 主页
                 views.setOnClickPendingIntent(R.id.widget_root, mainPendingIntent(context))

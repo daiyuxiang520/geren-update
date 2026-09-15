@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v61：小组件异常角标背景（红底圆角，白字叠加在车图右上角） -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#E53935" />
+    <corners android:radius="8dp" />
+</shape>

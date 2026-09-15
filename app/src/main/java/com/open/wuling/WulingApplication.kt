@@ -24,6 +24,9 @@ class WulingApplication : Application() {
         // 让 AppLogger 的 WARN/ERROR 具备上报友盟的通道（上报时会自行判断友盟是否已 init）
         com.open.wuling.util.AppLogger.attachContext(this)
 
+        // 「离车提醒」：创建通知渠道并同步开关缓存（v61）
+        com.open.wuling.util.VehicleAlertManager.attachContext(this)
+
         // 1) 崩溃处理器：本地日志 + 转发友盟（串联，不覆盖）
         //    注意：必须在友盟 init 之前设置本地部分，init 之后由 UmengInitializer
         //    抓取友盟处理器并串联，见下方 init 调用。

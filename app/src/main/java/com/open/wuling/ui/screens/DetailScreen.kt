@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -23,6 +25,7 @@ import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.TireRepair
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
@@ -31,6 +34,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -91,6 +95,52 @@ fun DetailScreen(
             }
         } else {
             val status = vehicle.status
+
+            // v61：离车安全提醒条——车窗未关/车门未锁/后备箱未关时置顶展示（橙色，跟数据走，
+            //      全部正常自动消失）。检测口径与系统通知共用 VehicleAlertManager.detectAlerts。
+            //      这里不受通知开关控制：用户既然打开了详情页，就该看到完整真相。
+            val safetyAlerts = remember(status) {
+                com.open.wuling.util.VehicleAlertManager.detectAlerts(status, windows = true, doors = true, trunk = true)
+            }
+            if (safetyAlerts.isNotEmpty()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = PrimaryOrange.copy(alpha = 0.14f)
+                    ),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Warning,
+                            contentDescription = null,
+                            tint = PrimaryOrange,
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "离车前请注意",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = PrimaryOrange
+                            )
+                            Text(
+                                text = safetyAlerts.joinToString("；"),
+                                fontSize = 12.sp,
+                                lineHeight = 17.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+            }
 
             // v58：删除「车辆信息」区块。该区块 v48 已删除过，但因工作区文件被旧副本覆盖而在 v56 静默回归。
             //      车辆静态档案（车型/VIN/车牌/颜色/购买信息等）请从「我的」页点击顶部车辆卡查看，

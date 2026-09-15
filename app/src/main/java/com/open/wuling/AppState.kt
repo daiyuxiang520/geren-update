@@ -517,6 +517,9 @@ class AppState @Inject constructor(
                 // 落盘缓存（供下次冷启动秒开） + 桌面小组件同步
                 saveVehicleCache(finalVehicle)
                 com.open.wuling.widget.VehicleStatusWidgetProvider.saveCacheAndPush(context, finalVehicle)
+
+                // 「离车提醒」检测（车窗未关/车门未锁/后备箱未关 → 系统通知；恢复自动撤回）（v61）
+                com.open.wuling.util.VehicleAlertManager.onStatusRefreshed(finalVehicle)
             }.onFailure { error ->
                 _errorMessage.value = error.message
             }

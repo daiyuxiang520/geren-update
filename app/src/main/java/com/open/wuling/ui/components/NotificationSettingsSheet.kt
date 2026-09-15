@@ -28,8 +28,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -150,6 +152,72 @@ fun NotificationSettingsSheet(
 
             Spacer(Modifier.height(20.dp))
 
+            // ===== 离车提醒（App 内检测：车窗/车门/后备箱）（v61）=====
+            val alertPrefs = remember { com.open.wuling.data.local.VehicleAlertPreferences(context) }
+            val alertEnabled by alertPrefs.enabledFlow.collectAsState(initial = true)
+            val alertWindows by alertPrefs.windowsFlow.collectAsState(initial = true)
+            val alertDoors by alertPrefs.doorsFlow.collectAsState(initial = true)
+            val alertTrunk by alertPrefs.trunkFlow.collectAsState(initial = true)
+
+            Text(
+                text = "离车提醒",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(Modifier.height(8.dp))
+
+            AlertSwitchRow(
+                title = "离车提醒总开关",
+                desc = "车辆状态异常时发送系统通知，恢复正常自动撤回",
+                checked = alertEnabled,
+                onChange = { alertPrefs.setEnabled(it) }
+            )
+            Divider(color = MaterialTheme.colorScheme.surfaceVariant)
+            AlertSwitchRow(
+                title = "车窗未关",
+                desc = "任一车窗未关（含开度大于 0）时提醒，并注明具体哪扇",
+                checked = alertWindows,
+                onChange = { alertPrefs.setWindows(it) },
+                enabled = alertEnabled
+            )
+            Divider(color = MaterialTheme.colorScheme.surfaceVariant)
+            AlertSwitchRow(
+                title = "车门未锁",
+                desc = "整车未上锁时提醒",
+                checked = alertDoors,
+                onChange = { alertPrefs.setDoors(it) },
+                enabled = alertEnabled
+            )
+            Divider(color = MaterialTheme.colorScheme.surfaceVariant)
+            AlertSwitchRow(
+                title = "后备箱未关",
+                desc = "后备箱处于打开状态时提醒",
+                checked = alertTrunk,
+                onChange = { alertPrefs.setTrunk(it) },
+                enabled = alertEnabled
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    .padding(14.dp)
+            ) {
+                Text(
+                    text = "提醒触发时机：App 打开期间每次车辆状态刷新后检测（前台约每 30 秒一次）。" +
+                        "桌面小组件的异常角标不受此开关影响，始终跟随最新状态显示。",
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Spacer(Modifier.height(20.dp))
+
             // ===== 说明 =====
             Row(
                 modifier = Modifier
@@ -235,6 +303,41 @@ private fun StatusCard(
                 .clip(RoundedCornerShape(8.dp))
                 .clickable(onClick = onAction)
                 .padding(horizontal = 10.dp, vertical = 6.dp)
+        )
+    }
+}
+
+@Composable
+private fun AlertSwitchRow(
+    title: String,
+    desc: String,
+    checked: Boolean,
+    onChange: (Boolean) -> Unit,
+    enabled: Boolean = true
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                fontSize = 14.sp,
+                color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = desc,
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        Switch(
+            checked = checked,
+            onCheckedChange = onChange,
+            enabled = enabled
         )
     }
 }
