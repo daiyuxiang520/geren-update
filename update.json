@@ -1,8 +1,8 @@
 {
-  "versionCode": 64,
-  "versionName": "3.61.0",
-  "updateLog": "v64 (3.61.0) 更新内容：\n1. 2×3 车辆状态卡回退到 v62 形态（移除被裁切的按钮行）\n2. 新增 4×1「车辆快捷控制」小组件：锁车 / 关窗 / 寻车三键，桌面一点即执行\n3. 控制条与状态卡分工：状态卡只负责看，控制条只负责点\n4. VIN 未就绪时点击控制条会明确提示「请先打开 App 刷新一次」\n提示：在小组件列表里长按添加「车辆快捷控制」，建议放在状态卡下方",
-  "apkUrl": "https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-assistant.apk",
+  "versionCode": 65,
+  "versionName": "3.62.0",
+  "updateLog": "v65 (3.62.0) 更新内容：\n1. 更新源接入 Gitee 国内镜像，版本检测与 APK 下载全程不再依赖第三方公益代理\n2. 国内自动优先走 Gitee（直连通常几十毫秒），15 个 GitHub 加速源保留为兜底，Gitee 不可用时自动接管\n3. 海外用户不受影响，仍按原有 GitHub 加速链路分发\n4. 开源仓库补足 v50-v55 期间遗漏同步的源码（纠偏、能耗趋势图、3D 地图等），仓库代码与实际 APK 现已完全一致",
+  "apkUrl": "https://gitee.com/daiyuxiang520/geren-update/releases/download/v65/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "17ae161cc6d39689f17872c3f4976722"
+  "md5": "f157e9f4a798a65396708856e9284d2a"
 }

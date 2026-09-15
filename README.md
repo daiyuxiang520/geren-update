@@ -25,22 +25,36 @@
 
 ## 下载安装
 
-前往 [**Releases**](https://github.com/daiyuxiang520/geren-update/releases/latest) 下载 `wuling-assistant.apk` 覆盖安装（包名不变，可覆盖历史版本）。GitHub 直链在国内可能无法访问，可任选一个加速镜像替换域名：
+### GitHub Releases（权威源）
+
+前往 [**Releases**](https://github.com/daiyuxiang520/geren-update/releases/latest) 下载 `wuling-assistant.apk` 覆盖安装（包名不变，可覆盖历史版本）。每个版本同时附带 `artifacts/vNN.apk` 归档件。
+
+### 国内镜像（Gitee，免代理直连）
+
+[Gitee 仓库](https://gitee.com/daiyuxiang520/geren-update) 同步自本仓库，APK 以「发行版」附件托管。GitHub 直链在国内可能无法访问，建议国内用户直接用：
 
 ```
-https://edgeone.gh-proxy.org/https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-assistant.apk
-https://ghproxy.net/https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-assistant.apk
+https://gitee.com/daiyuxiang520/geren-update/releases/download/v65/wuling-assistant.apk
 ```
+
+把末尾 `v65` 换成任意版本号即可下载对应版本，无需任何第三方代理前缀。
 
 ## 自动更新
 
-App 启动时自动检查更新（也可在「我的 → 检查更新」手动触发），更新配置托管于本仓库的 [`update.json`](./update.json)。
+App 启动时自动检查更新（也可在「我的 → 检查更新」手动触发）。本仓库是**唯一权威源**；[Gitee 仓库](https://gitee.com/daiyuxiang520/geren-update) 为其国内镜像，两份 [`update.json`](./update.json) **内容完全一致**（含一致版本号与同一 APK 下载地址），因此镜像同步不会造成分发分歧：
 
-- **检查更新**：并发请求 15 个加速源取版本号最大者，避免单源缓存旧版
+| 读取源 | 地址 | 说明 |
+|---|---|---|
+| Gitee（镜像） | `https://gitee.com/daiyuxiang520/geren-update/raw/master/update.json` | 国内直连，无需代理 |
+| GitHub（权威） | [`update.json`](./update.json)（经公益加速源） | 兜底，取到的是同一份内容 |
+
+- **检查更新**：并发请求全部源，取版本号最大者；**版本相同时保留先返回者** —— 国内 Gitee 通常几十毫秒就返回，自然胜出；海外则是 GitHub 加速源先到
+- **下载**：由于两份清单的 `apkUrl` **统一指向 Gitee 发行版附件**，无论从哪个源检到更新，最终都从 Gitee 下载 —— 国内全程直连，不经第三方公益代理
+- **降级保障**：Gitee 不可用时仍能从 GitHub 加速源读到版本信息；若需手动下载，GitHub Releases 与 Gitee 发行版各存有一份完整 APK
 - **下载**：自动测速择优（上次最快源优先，失败自动回退）→ MD5 校验 → 调起安装器；全部失败自动回退浏览器下载
 - 更新弹窗内可**手动选择下载源**（仅本次生效），每个源实时显示延迟
 
-加速源列表提取自 [XIU2/UserScript](https://github.com/XIU2/UserScript)「Github 增强 - 高速下载」，经本地实测筛选。
+GitHub 加速源列表提取自 [XIU2/UserScript](https://github.com/XIU2/UserScript)「Github 增强 - 高速下载」，经本地实测筛选。
 
 ## 开源致谢
 
@@ -74,6 +88,7 @@ export WULING_KEY_PASSWORD=your_key_password
 
 | 版本 | 说明 |
 |---|---|
+| **v65** (3.62.0) | **接入 Gitee 国内镜像**：更新源列表首位改为 Gitee 直连（`gitee.com/daiyuxiang520/geren-update`），版本清单与 APK 均无需第三方代理即可国内高速拉取；15 个 GitHub 加速源保留为兜底。同时补齐 v50–v55 期间遗漏未同步的源码 |
 | **v64** (3.61.0) | 桌面小组件拆分：2×3 状态卡回退为纯展示（v63 加的按钮行会被格子裁切），另出 **4×1「车辆快捷控制」条**（锁车/关窗/寻车） |
 | **v63** (3.60.0) | **提醒可一键处理**：通知与详情页提醒条新增「立即锁车 / 一键关窗」；**新增充电与电量提醒**（开始充/已充满/中断/电量偏低，阈值可调）；小组件新增锁车/关窗/寻车快捷键；位置页新增「停车记录」（含停留时长，可导航）；解锁/开窗/启动/开尾门加二次确认 |
 | **v62** (3.59.0) | **显示官方下发时间**：位置页新增「位置更新于 … · N 分钟前」，详情页数据时间卡同步升级；超 10 分钟橙色提示「车辆可能已离线（TBox 休眠）」；位置时间戳修正为官方采集时间 |
