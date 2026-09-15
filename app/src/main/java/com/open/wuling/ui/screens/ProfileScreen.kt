@@ -29,13 +29,13 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.ElectricBolt
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Notifications
@@ -450,28 +450,13 @@ fun ProfileScreen(
             shape = RoundedCornerShape(16.dp)
         ) {
             Column {
-                SettingsItem(
-                    icon = Icons.Filled.Info,
-                    title = "用户协议",
-                    iconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    onClick = { }
-                )
-
-                Divider(color = MaterialTheme.colorScheme.surfaceVariant)
-
-                SettingsItem(
-                    icon = Icons.Filled.PrivacyTip,
-                    title = "隐私政策",
-                    iconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    onClick = { }
-                )
-
-                Divider(color = MaterialTheme.colorScheme.surfaceVariant)
-
+                // 注：「用户协议」「隐私政策」两项已移除——
+                // 隐私政策统一由「设置 → 隐私设置」提供（含权限状态与数据管理，更完整），
+                // 避免「关于」与「设置」两处重复入口。
                 SettingsItem(
                     icon = Icons.Filled.Info,
                     title = "关于我们",
-                    subtitle = "开源致谢与版本信息",
+                    subtitle = "开源仓库 · 开源致谢与版本信息",
                     iconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     onClick = { showAboutDialog = true }
                 )
@@ -942,6 +927,54 @@ private fun AboutDialog(onDismiss: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(20.dp))
 
+                // ===== 开源仓库（本项目源码地址）=====
+                Text(
+                    text = "开源仓库",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f))
+                        .clickable { openUrl(OPEN_SOURCE_REPO_URL) }
+                        .padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Code,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "本项目完全开源",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = OPEN_SOURCE_REPO_DISPLAY,
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    Text(
+                        text = "前往",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
                 Text(
                     text = "开源致谢",
                     fontSize = 15.sp,
@@ -1282,3 +1315,7 @@ private fun SettingsItem(
         )
     }
 }
+
+/** 本项目开源仓库地址（App 内「关于我们」展示并跳转） */
+private const val OPEN_SOURCE_REPO_URL = "https://github.com/daiyuxiang520/geren-update"
+private const val OPEN_SOURCE_REPO_DISPLAY = "github.com/daiyuxiang520/geren-update"
