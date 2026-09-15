@@ -1,0 +1,53 @@
+name: Attach APK to Release
+
+# 触发方式：
+#   1) 手动（workflow_dispatch）
+#   2) push tag 时自动
+# 用途：把仓库根目录的 APK 作为 Release 附件挂上去。
+#       之所以需要这个 workflow，是因为部分网络环境下 uploads.github.com 不可达，
+#       而 Actions runner 在 GitHub 侧，访问该域名没有障碍。
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '目标 Release tag（如 v57）'
+        required: true
+        type: string
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  attach:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: 解析目标 tag
+        id: meta
+        run: |
+          if [ -n "${{ inputs.tag }}" ]; then
+            echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 挂载 APK 到 Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          TAG="${{ steps.meta.outputs.tag }}"
+          echo "目标 Release: $TAG"
+          APK="wuling-assistant.apk"
+          test -f "$APK" || { echo "仓库根目录缺少 $APK"; exit 1; }
+          ls -la "$APK"
+          md5sum "$APK" || true
+          # 若附件已存在则先删除，避免重名冲突
+          gh release upload "$TAG" "$APK" --clobber
+          echo "--- 结果 ---"
+          gh release view "$TAG" --json assets -q '.assets[] | "\(.name)  \(.size) bytes"'
