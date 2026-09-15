@@ -1,0 +1,4 @@
+# Force LF for shell scripts and property files, otherwise CI on Ubuntu breaks
+gradlew text eol=lf
+gradlew.bat text eol=crlf
+*.properties text eol=lf

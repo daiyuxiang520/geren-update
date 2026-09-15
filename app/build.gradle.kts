@@ -15,11 +15,13 @@ android {
     buildToolsVersion = "36.0.0"
 
     defaultConfig {
-        applicationId = "com.open.wuling"
+        // 发布用包名：与历史各版本（v21–v28）保持一致，确保老用户可覆盖升级。
+        // 注意：namespace 保持 com.open.wuling（对应源码目录），二者可以不同。
+        applicationId = "com.wuling.app.repack"
         minSdk = 26
         targetSdk = 36
-        versionCode = 28
-        versionName = "3.25.0-android16"
+        versionCode = 42
+        versionName = "3.39.0-android16"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

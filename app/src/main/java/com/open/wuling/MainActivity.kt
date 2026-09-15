@@ -42,6 +42,7 @@ import androidx.lifecycle.viewModelScope
 import coil.compose.AsyncImage
 import com.open.wuling.data.local.AmapKeyManager
 import com.open.wuling.data.local.BleAutoLockPreferences
+import com.open.wuling.data.local.WeatherInfo
 import com.open.wuling.ui.components.ACControlSheet
 import com.open.wuling.ui.components.BleAutoLockSheet
 import com.open.wuling.ui.components.PermissionDeniedDialog
@@ -342,6 +343,13 @@ fun MainScreen(
     var selectedTab by remember { mutableIntStateOf(0) }
     var showACControl by remember { mutableStateOf(false) }
     var showBleSettings by remember { mutableStateOf(false) }
+
+    // ===== 位置页天气/地址状态提升（v37）=====
+    // LocationScreen 位于 when(selectedTab) 分支内，父级重组会重建它，
+    // 内部 remember 状态随之丢失（日志表现为「刚拿到数据就被清空」）。
+    // 提升到此处后跨重组与切 Tab 均保留。
+    var hoistedWeather by remember { mutableStateOf<WeatherInfo?>(null) }
+    var hoistedAddress by remember { mutableStateOf<String?>(null) }
     // 「车辆能耗」二级页面（从我的页面进入，全屏覆盖内容区）
     var showEnergyPage by remember { mutableStateOf(false) }
 
@@ -499,7 +507,11 @@ fun MainScreen(
                 )
                 2 -> LocationScreen(
                     modifier = Modifier.padding(paddingValues),
-                    vehicle = selectedVehicle
+                    vehicle = selectedVehicle,
+                    weatherState = hoistedWeather,
+                    onWeatherChange = { hoistedWeather = it },
+                    addressState = hoistedAddress,
+                    onAddressChange = { hoistedAddress = it }
                 )
                 3 -> ProfileScreen(
                     modifier = Modifier.padding(paddingValues),

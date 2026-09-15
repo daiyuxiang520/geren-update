@@ -83,6 +83,14 @@ class AppState @Inject constructor(
     private val _updateError = MutableStateFlow<String?>(null)
     val updateError: StateFlow<String?> = _updateError.asStateFlow()
 
+    /** 用户手动选中的下载源前缀（null=自动）。仅本次更新流程生效，不持久化。 */
+    private val _selectedMirror = MutableStateFlow<String?>(null)
+    val selectedMirror: StateFlow<String?> = _selectedMirror.asStateFlow()
+
+    /** 各加速源实时延迟（url -> ms，null=不可达/未测），供更新弹窗展示 */
+    private val _mirrorSpeeds = MutableStateFlow<Map<String, Long?>>(emptyMap())
+    val mirrorSpeeds: StateFlow<Map<String, Long?>> = _mirrorSpeeds.asStateFlow()
+
     private val _commandResult = MutableStateFlow<CommandResult?>(null)
     val commandResult: StateFlow<CommandResult?> = _commandResult.asStateFlow()
 
@@ -862,8 +870,14 @@ class AppState @Inject constructor(
      */
     fun checkAppUpdate(manual: Boolean = false) {
         scope.launch {
-            val info = UpdateChecker.fetchUpdateInfo(UpdateConfig.UPDATE_JSON_URLS)
+            // 传入本地版本号：并发拉取时一旦有源返回更高版本即可提前返回（快速通道）
+            val info = UpdateChecker.fetchUpdateInfo(
+                UpdateConfig.UPDATE_JSON_URLS,
+                BuildConfig.VERSION_CODE
+            )
             if (info != null && info.versionCode > BuildConfig.VERSION_CODE && info.apkUrl.isNotBlank()) {
+                _selectedMirror.value = null    // 每次新弹窗回到「自动」，手动选择仅本次生效
+                _mirrorSpeeds.value = emptyMap() // 旧测速结果作废，由弹窗重新测
                 _pendingUpdate.value = info
             } else if (manual) {
                 Toast.makeText(
@@ -881,6 +895,34 @@ class AppState @Inject constructor(
         if (info?.forceUpdate != true) _pendingUpdate.value = null
     }
 
+    /** 设置手动下载源（null=自动）。仅影响本次更新流程，不持久化。 */
+    fun setSelectedMirror(prefix: String?) {
+        _selectedMirror.value = prefix
+    }
+
+    /** 触发各加速源延迟测速（更新弹窗展示用） */
+    fun measureMirrors(apkUrl: String) {
+        if (apkUrl.isBlank()) return
+        scope.launch {
+            val urls = UpdateConfig.mirrorCandidates(apkUrl)
+            _mirrorSpeeds.value = UpdateChecker.measureMirrorSpeeds(urls)
+        }
+    }
+
+    /**
+     * 构造本次下载的候选 URL 列表。
+     * - 未手动选源：返回全部加速源候选（downloadApk 内部自动测速/记忆择优）。
+     * - 已手动选源：仅返回该源（强制），绕过自动排序。
+     */
+    private fun buildDownloadUrls(apkUrl: String, chosen: String?): List<String> {
+        if (chosen.isNullOrBlank()) return UpdateConfig.mirrorCandidates(apkUrl)
+        return if (apkUrl.startsWith("https://raw.githubusercontent.com/")) {
+            listOf("$chosen$apkUrl")
+        } else {
+            listOf(apkUrl)
+        }
+    }
+
     /** 开始后台下载 APK → MD5 校验 → 调起安装；失败回退浏览器下载 */
     fun startUpdateInstall() {
         val info = _pendingUpdate.value ?: return
@@ -889,7 +931,8 @@ class AppState @Inject constructor(
             _updateProgress.value = 0
             val dest = java.io.File(appContext.cacheDir, "updates/update.apk")
             try {
-                UpdateChecker.downloadApk(UpdateConfig.mirrorCandidates(info.apkUrl), dest) { p ->
+                val urls = buildDownloadUrls(info.apkUrl, _selectedMirror.value)
+                UpdateChecker.downloadApk(urls, dest) { p ->
                     _updateProgress.value = p
                 }
                 // MD5 校验（若 json 提供了 md5）

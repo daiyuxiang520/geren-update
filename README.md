@@ -160,6 +160,56 @@ App 内自动更新所用的 **15 个 GitHub 公益加速源**，提取自该项
 | [AndroidX Security Crypto](https://developer.android.com/jetpack/androidx/releases/security) | 本地加密存储 |
 | [友盟+ U-App](https://www.umeng.com/) | 使用统计（启动/设备/留存/页面浏览） |
 
+## 构建
+
+本项目使用 Gradle + Android Gradle Plugin 构建。**仓库不含任何密钥**，所有敏感配置通过 `local.properties` 或环境变量注入（见 `app/build.gradle.kts` 中的 `prop()` 读取逻辑）。
+
+### 环境要求
+- **JDK 17**
+- **Android SDK**：`compileSdk` / `targetSdk` = 36（Android 16）
+- 联网环境（首次构建会下载 Gradle 及依赖；国内网络可参考 `build-env/mirrors.gradle` 注入仓库镜像）
+
+### 1. 配置接口凭据
+```bash
+cp local.properties.example local.properties
+```
+按 `local.properties.example` 内注释逐项填写。其中 `client.id` / `app.code` / `base.url` / `api.version` 等为固定值可直接使用；`client.secret`、`llb.*`、`energy.*` 为车联网接口凭据，需自行获取（缺失时对应功能不可用，但 App 仍可正常构建运行）。
+
+> `local.properties` 已被 `.gitignore` 排除，不会进入版本库。
+
+### 2. 配置签名（发布用）
+release 构建的签名**完全来自环境变量**，源码中不内置任何口令：
+```bash
+export WULING_KEYSTORE_PATH=/path/to/your.keystore
+export WULING_KEYSTORE_PASSWORD=your_store_password
+export WULING_KEY_ALIAS=your_key_alias
+export WULING_KEY_PASSWORD=your_key_password
+```
+未设置时，release 构建会自动回退到 **debug 签名**（仅用于本地验证，无法覆盖安装正式版）。生成自己的签名密钥：
+```bash
+keytool -genkeypair -v -keystore my.keystore -alias mykey \
+        -keyalg RSA -keysize 2048 -validity 10000
+```
+
+### 3. 构建
+```bash
+# 方式 A：本机直接构建
+./gradlew assembleRelease          # 产物位于 app/build/outputs/apk/release/
+
+# 方式 B：使用预置 Docker 镜像（已含 SDK 36 + 国内镜像，推荐）
+./build-android16.sh               # 构建 release
+./build-android16.sh debug         # 构建 debug
+```
+
+### 4. 对齐与签名（手动签名时）
+```bash
+zipalign -f 4 app-release.apk app-release-aligned.apk
+apksigner sign --ks "$WULING_KEYSTORE_PATH" \
+               --ks-key-alias "$WULING_KEY_ALIAS" app-release-aligned.apk
+```
+
+> 应用包名固定为 `com.wuling.app.repack`，构建出的 APK 可直接覆盖安装历史版本。
+
 ## 版本历史
 
 | 版本 | 说明 |

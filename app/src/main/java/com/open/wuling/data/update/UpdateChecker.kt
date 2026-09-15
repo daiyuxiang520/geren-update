@@ -2,6 +2,9 @@ package com.open.wuling.data.update
 
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -11,6 +14,10 @@ import java.io.File
 import java.io.FileOutputStream
 import java.math.BigInteger
 import java.security.MessageDigest
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.TimeUnit
 
 /**
@@ -38,6 +45,24 @@ object UpdateChecker {
         .build()
 
     /**
+     * 并发拉取 update.json 专用客户端（超时更短）。
+     * 并发场景下一个慢源不该拖垮整体，故单独收紧超时；整体还有 [JSON_FETCH_BUDGET_MS] 兜底。
+     */
+    private val jsonClient = OkHttpClient.Builder()
+        .connectTimeout(5, TimeUnit.SECONDS)
+        .readTimeout(6, TimeUnit.SECONDS)
+        .build()
+
+    /** 并发拉取 update.json 的整体时间预算（毫秒），超时后按已收到的结果取最大版本 */
+    private const val JSON_FETCH_BUDGET_MS = 8_000L
+
+    /**
+     * 快速通道命中后的宽限时间（毫秒）。
+     * 某个源已返回「比本地更新」时，再给其余源一点时间，避免只取到较早返回的那个版本。
+     */
+    private const val JSON_FAST_PATH_GRACE_MS = 500L
+
+    /**
      * 上次成功的加速源前缀（如 "https://ghproxy.net/"）。
      * 由 AppState 在启动时从 SharedPreferences 注入、成功后回写，
      * 使下次优先命中可用源，避免每次都从头逐个尝试。
@@ -63,25 +88,91 @@ object UpdateChecker {
     var onBestDownloadMirror: ((String) -> Unit)? = null
 
     /**
-     * 拉取 update.json（带时间戳绕过缓存），依次尝试多个源，全部失败返回 null。
-     * 会优先尝试上次成功的源，失败后按原顺序遍历其余源。
+     * 拉取 update.json：**并发**请求所有候选源，返回「版本号最大」的那份结果。
+     *
+     * ### 为什么不再「首个成功即用」
+     * 加速源是第三方 CDN，命中陈旧的缓存副本时会返回**旧版** update.json（HTTP 200 且格式合法）。
+     * 顺序遍历 + 首个成功即用的策略下，若列表靠前的源缓存未刷新，用户就会一直
+     * 被告知「已是最新版本」，新版本永远检测不到。
+     *
+     * 并发取最大值后：**谁最新听谁的** —— 只要有一个源已刷新，就能拿到最新版本，
+     * 不依赖单个源的缓存时效。
+     *
+     * ### 两条路径
+     * - **快速通道**：任一源返回的版本号 > [currentVersionCode] → 说明确实有更新，
+     *   短暂宽限后即返回，不必干等其余慢源（常见情况下 1 秒内完成）。
+     * - **等待取最大**：所有源都返回 ≤ 本地版本（即「无更新」）时，等齐/超时后取最大值，
+     *   确保是真正的「无更新」而非「所有源都缓存了旧版」。
+     *
+     * @param jsonUrls            候选地址（各加速源拼接的 raw 直链）
+     * @param currentVersionCode  本地版本号，用于快速通道判断；传 -1 则始终走等待取最大
      */
-    suspend fun fetchUpdateInfo(jsonUrls: List<String>): AppUpdateInfo? = withContext(Dispatchers.IO) {
-        // 把上次成功的源提到最前
+    suspend fun fetchUpdateInfo(
+        jsonUrls: List<String>,
+        currentVersionCode: Int = -1
+    ): AppUpdateInfo? = withContext(Dispatchers.IO) {
         val ordered = prioritize(jsonUrls, lastGoodMirror)
-        for (url in ordered) {
-            fetchOne(url)?.let {
-                rememberMirror(url)
-                return@withContext it
+        if (ordered.isEmpty()) {
+            null
+        } else {
+            // 各源返回的最新结果：url → info，取 versionCode 最大的一份
+            val best = AtomicReference<Pair<String, AppUpdateInfo>?>(null)
+            val foundNewer = AtomicBoolean(false)
+            val finished = AtomicInteger(0)
+
+            supervisorScope {
+                val jobs = ordered.map { url ->
+                    async {
+                        try {
+                            val info = fetchOne(url, jsonClient)
+                            if (info != null) {
+                                best.updateAndGet { cur ->
+                                    if (cur == null || info.versionCode > cur.second.versionCode) {
+                                        url to info
+                                    } else cur
+                                }
+                                if (currentVersionCode >= 0 && info.versionCode > currentVersionCode) {
+                                    foundNewer.set(true)
+                                }
+                            }
+                        } finally {
+                            finished.incrementAndGet()
+                        }
+                    }
+                }
+
+                // 退出条件：全部结束 / 超预算 / 快速通道命中
+                val deadline = System.currentTimeMillis() + JSON_FETCH_BUDGET_MS
+                while (finished.get() < jobs.size && System.currentTimeMillis() < deadline) {
+                    if (foundNewer.get()) break
+                    delay(80)
+                }
+                // 快速通道命中时给其余源一点宽限，尽量拿到最大版本
+                if (foundNewer.get()) delay(JSON_FAST_PATH_GRACE_MS)
+
+                jobs.forEach { it.cancel() }   // 取消仍在飞行的请求（已结束的 job 无副作用）
+            }
+
+            val result = best.get()
+            if (result == null) {
+                Log.w(TAG, "all mirrors failed (${ordered.size} sources)")
+                null
+            } else {
+                // 记住给出最大版本的源：它缓存最新鲜，下次优先
+                rememberMirror(result.first)
+                Log.d(
+                    TAG,
+                    "update json: picked v${result.second.versionCode} from ${hostOf(result.first)} " +
+                        "(current=$currentVersionCode)"
+                )
+                result.second
             }
         }
-        Log.w(TAG, "all mirrors failed")
-        null
     }
 
     /** 兼容单 URL 调用 */
-    suspend fun fetchUpdateInfo(jsonUrl: String): AppUpdateInfo? =
-        fetchUpdateInfo(listOf(jsonUrl))
+    suspend fun fetchUpdateInfo(jsonUrl: String, currentVersionCode: Int = -1): AppUpdateInfo? =
+        fetchUpdateInfo(listOf(jsonUrl), currentVersionCode)
 
     /** 把命中 lastGoodMirror 的 URL 排到最前（其余保持原顺序） */
     private fun prioritize(urls: List<String>, good: String?): List<String> {
@@ -109,10 +200,21 @@ object UpdateChecker {
         null
     }
 
-    private fun fetchOne(jsonUrl: String): AppUpdateInfo? = try {
+    /**
+     * 拉取单个源的 update.json。
+     * @param http 使用的 OkHttp 客户端（并发检查用超时更短的 [jsonClient]）
+     */
+    private fun fetchOne(jsonUrl: String, http: OkHttpClient = client): AppUpdateInfo? = try {
         val sep = if (jsonUrl.contains("?")) "&" else "?"
         val url = "$jsonUrl${sep}t=${System.currentTimeMillis()}"
-        client.newCall(Request.Builder().url(url).build()).execute().use { resp ->
+        val request = Request.Builder()
+            .url(url)
+            // 时间戳之外再补两个标准反缓存头：部分 CDN 对带参 URL 仍会缓存，
+            // 但对 no-cache 请求头会回源校验。
+            .header("Cache-Control", "no-cache")
+            .header("Pragma", "no-cache")
+            .build()
+        http.newCall(request).execute().use { resp ->
             if (!resp.isSuccessful) {
                 Log.w(TAG, "update json HTTP ${resp.code} @ $jsonUrl")
                 null
@@ -273,6 +375,18 @@ object UpdateChecker {
             }
         }
         onProgress(100)
+    }
+
+    /**
+     * 公开测速入口（供更新弹窗 UI 实时展示各加速源延迟）。
+     * 复用内部 measureSpeeds 的并发 HEAD 探测，返回 Map<url, 延迟ms>，
+     * 未响应/超时的源映射为 null，便于 UI 标记「不可用」。
+     */
+    suspend fun measureMirrorSpeeds(urls: List<String>): Map<String, Long?> = withContext(Dispatchers.IO) {
+        val measured = measureSpeeds(urls) // List<Pair<url, ms>>，仅含成功项
+        val ok = measured.toMap()          // Map<String, Long>，成功的源及其延迟
+        // 保持 urls 原顺序，成功源有延迟，其余（不可达/超时）映射为 null
+        urls.associateWith { ok[it] }
     }
 
     /** 计算文件 MD5（小写 32 位），用于下载后防篡改校验 */

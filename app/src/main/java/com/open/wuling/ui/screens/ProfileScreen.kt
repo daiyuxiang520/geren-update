@@ -196,38 +196,27 @@ fun ProfileScreen(
                 Spacer(modifier = Modifier.width(16.dp))
 
                 Column(modifier = Modifier.weight(1f)) {
-                    // 车辆型号作为用户名
+                    // 绑定手机号（置顶，作为主标题显示）
                     Text(
-                        text = vehicleName.ifEmpty { "未绑定车辆" },
+                        text = if (!bindPhone.isNullOrEmpty()) "📱 $bindPhone" else "未绑定手机",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    
-                    // 绑定手机号
-                    if (!bindPhone.isNullOrEmpty()) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "📱 $bindPhone",
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                    
-                    // 显示 VIN
-                    selectedVehicle?.vin?.takeIf { it.isNotEmpty() }?.let { vin ->
-                        Text(
-                            text = "VIN: ${vin.takeLast(6)}",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                        )
-                    }
+
+                    // 车型（车系名，置于下方）
+                    Text(
+                        text = vehicleName.ifEmpty { "未绑定车辆" },
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
 
-                Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.width(8.dp))
 
                 TextButton(onClick = { /* Edit profile */ }) {
                     Text("编辑", color = MaterialTheme.colorScheme.primary)
@@ -831,9 +820,36 @@ private fun AboutDialog(onDismiss: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // 主要致谢：加速源来自 XIU2/UserScript
+                // 致谢一：项目来源（hasscc/wuling 上游思路）
                 Text(
-                    text = "特别感谢 XIU2 的开源项目「Github 增强 - 高速下载」。",
+                    text = "特别感谢 hasscc/wuling",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "本项目的车控协议思路参考自 hasscc 的开源项目 wuling（Home Assistant 版）。" +
+                        "本应用在此基础上以原生 Android 独立实现，不依赖 Home Assistant，也不依赖官方 App。",
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "github.com/hasscc/wuling",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.clickable {
+                        openUrl("https://github.com/hasscc/wuling")
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // 致谢二：加速源来自 XIU2/UserScript
+                Text(
+                    text = "特别感谢 XIU2 的「Github 增强 - 高速下载」",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -875,7 +891,10 @@ private fun AboutDialog(onDismiss: () -> Unit) {
                         "· OkHttp\n" +
                         "· Gson\n" +
                         "· Hilt（Dagger）\n" +
-                        "· Coil",
+                        "· Coil\n" +
+                        "· AndroidX DataStore\n" +
+                        "· AndroidX Security Crypto\n" +
+                        "· 友盟+ U-App（统计）",
                     fontSize = 12.sp,
                     lineHeight = 20.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant

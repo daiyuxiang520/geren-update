@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">五菱助手</string>
+    <string name="app_name">五菱车控</string>
     <string name="tab_vehicle">车辆</string>
     <string name="tab_location">位置</string>
     <string name="tab_profile">我的</string>

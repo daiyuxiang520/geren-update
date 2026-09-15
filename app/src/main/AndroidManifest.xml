@@ -74,7 +74,7 @@
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:enableOnBackInvokedCallback="true"
         android:icon="@mipmap/ic_launcher"
-        android:label="50third"
+        android:label="五菱车控"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:extractNativeLibs="false"

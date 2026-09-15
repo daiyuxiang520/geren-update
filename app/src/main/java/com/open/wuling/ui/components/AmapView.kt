@@ -30,12 +30,22 @@ import androidx.lifecycle.LifecycleEventObserver
  */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
+/**
+ * @param interactive 是否允许手势交互（拖拽 / 缩放）。
+ *  - `true`（默认）：可自由平移缩放，用于**全屏地图**。
+ *  - `false`：**静态预览**，地图自身不响应任何手势。用于嵌在可滚动页面里的小地图 ——
+ *    v38 给位置页加了整页 verticalScroll 后，Compose 的 scrollable 会截走触摸事件，
+ *    WebView 只收到 DOWN 收不到 MOVE，导致「地图不动、页面在滚」。
+ *    与其两边抢，不如让小地图彻底不参与手势：页面滑动一路顺畅，
+ *    要看/要操作地图就点「全屏」进独立页面（那里没有父级滚动容器，手势完整）。
+ */
 fun AmapView(
     longitude: Double,
     latitude: Double,
     modifier: Modifier = Modifier,
     zoomLevel: Int = 16,
     showMarker: Boolean = true,
+    interactive: Boolean = true,
     key: String = ""
 ) {
     val context = LocalContext.current
@@ -101,7 +111,7 @@ fun AmapView(
     }
 
     // 更新地图内容
-    DisposableEffect(longitude, latitude, zoomLevel, showMarker, key) {
+    DisposableEffect(longitude, latitude, zoomLevel, showMarker, interactive, key) {
         isLoading = true
 
         if (key.isNotEmpty()) {
@@ -123,12 +133,21 @@ fun AmapView(
                             var map = new AMap.Map('container', {
                                 zoom: $zoomLevel,
                                 center: [$longitude, $latitude],
-                                viewMode: '2D'
+                                viewMode: '2D',
+                                // interactive=false → 静态预览：地图完全不响应手势，
+                                // 触摸事件不会被 WebView 吃掉，页面可一路顺畅滑动。
+                                dragEnable: $interactive,
+                                zoomEnable: $interactive,
+                                scrollWheel: $interactive,
+                                doubleClickZoom: $interactive,
+                                touchZoom: $interactive,
+                                keyboardEnable: $interactive
                             });
 
                             AMap.plugin(['AMap.ToolBar', 'AMap.Marker'], function() {
-                                map.addControl(new AMap.ToolBar({ position: 'RB' }));
-                                
+                                // 缩放工具条只在可交互时才有意义（小地图禁用缩放，按钮会失效）
+                                ${if (interactive) "map.addControl(new AMap.ToolBar({ position: 'RB' }));" else ""}
+
                                 ${if (showMarker) """
                                 var marker = new AMap.Marker({
                                     position: [$longitude, $latitude],

@@ -111,6 +111,10 @@ class VehicleRepository @Inject constructor(
             model = apiInfo?.seriesCode ?: apiInfo?.carTypeName ?: "",
             status = status,
             carInfo = carInfo,
+            // ⚠️ 条件赋值：接口任何一次没返回经纬度，location 就会变成 null
+            //    （调用方需自行做「最后有效坐标」兜底，见 LocationScreen 的 activeCoord）。
+            // 注：VehicleLocation.address 服务端**不提供**（CarStatusApi 无该字段），
+            //     位置页地址一律由高德逆地理解析得到。
             location = if (apiStatus.latitude != null && apiStatus.longitude != null) {
                 VehicleLocation(
                     latitude = apiStatus.latitude,

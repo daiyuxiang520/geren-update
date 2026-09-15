@@ -25,29 +25,37 @@ object UpdateConfig {
     /**
      * GitHub 公益加速源（国内可达），按实测延迟从快到慢排序。
      *
-     * 列表扩到 15 个：单一源失效/限流不影响整体可用性；
-     * fetchUpdateInfo 会依次尝试，首个成功即用（配合 UpdateChecker 的成功源记忆）。
+     * 列表扩到 15 个：单一源失效/限流不影响整体可用性。
+     * fetchUpdateInfo 会**并发**请求全部源并取 versionCode 最大的结果——
+     * 加速源是第三方 CDN，返回旧缓存副本时也能靠其它已刷新的源纠正
+     * （顺序遍历「首个成功即用」会被陈旧缓存卡住，导致检测不到新版本）。
      */
+    /**
+     * 加速源条目：url 为代理前缀，label 为 UI 展示名（取域名，便于用户辨识）。
+     * 顺序即「实测从快到慢」，UI 列表与下载测速均沿用此顺序。
+     */
+    data class MirrorEntry(val label: String, val url: String)
+
     private val MIRRORS = listOf(
-        "https://edgeone.gh-proxy.org/",     // 实测 0.20s
-        "https://git.yylx.win/",             // 实测 0.30s
-        "https://ghfile.geekertao.top/",     // 实测 0.53s
-        "https://gh.xxooo.cf/",              // 实测 0.55s
-        "https://ghproxy.net/",              // 实测 0.60s
-        "https://ghp.keleyaa.com/",          // 实测 0.63s
-        "https://gitproxy.mrhjx.cn/",        // 实测 0.63s
-        "https://fastgit.cc/",               // 实测 0.64s
-        "https://ghpxy.hwinzniej.top/",      // 实测 0.66s
-        "https://wget.la/",                  // 实测 0.85s（APK 下载最快）
-        "https://github.ednovas.xyz/",       // 实测 0.86s
-        "https://cdn.gh-proxy.org/",         // 实测 0.98s
-        "https://github.boki.moe/",          // 实测 1.01s
-        "https://hub.glowp.xyz/",            // 实测 1.01s
-        "https://gh.zwy.one/"                // 实测 1.37s
+        MirrorEntry("edgeone.gh-proxy.org", "https://edgeone.gh-proxy.org/"),     // 实测 0.20s
+        MirrorEntry("git.yylx.win", "https://git.yylx.win/"),                       // 实测 0.30s
+        MirrorEntry("ghfile.geekertao.top", "https://ghfile.geekertao.top/"),     // 实测 0.53s
+        MirrorEntry("gh.xxooo.cf", "https://gh.xxooo.cf/"),                         // 实测 0.55s
+        MirrorEntry("ghproxy.net", "https://ghproxy.net/"),                         // 实测 0.60s
+        MirrorEntry("ghp.keleyaa.com", "https://ghp.keleyaa.com/"),               // 实测 0.63s
+        MirrorEntry("gitproxy.mrhjx.cn", "https://gitproxy.mrhjx.cn/"),           // 实测 0.63s
+        MirrorEntry("fastgit.cc", "https://fastgit.cc/"),                           // 实测 0.64s
+        MirrorEntry("ghpxy.hwinzniej.top", "https://ghpxy.hwinzniej.top/"),       // 实测 0.66s
+        MirrorEntry("wget.la", "https://wget.la/"),                                 // 实测 0.85s（APK 下载最快）
+        MirrorEntry("github.ednovas.xyz", "https://github.ednovas.xyz/"),         // 实测 0.86s
+        MirrorEntry("cdn.gh-proxy.org", "https://cdn.gh-proxy.org/"),             // 实测 0.98s
+        MirrorEntry("github.boki.moe", "https://github.boki.moe/"),               // 实测 1.01s
+        MirrorEntry("hub.glowp.xyz", "https://hub.glowp.xyz/"),                   // 实测 1.01s
+        MirrorEntry("gh.zwy.one", "https://gh.zwy.one/")                            // 实测 1.37s
     )
 
     /** update.json 的候选地址（各加速源拼接 raw 直链） */
-    val UPDATE_JSON_URLS: List<String> = MIRRORS.map { "$it$RAW/update.json" }
+    val UPDATE_JSON_URLS: List<String> = MIRRORS.map { "${it.url}$RAW/update.json" }
 
     /** 兼容旧调用：默认使用第一个加速源 */
     val UPDATE_JSON_URL: String get() = UPDATE_JSON_URLS.first()
@@ -55,6 +63,9 @@ object UpdateConfig {
     /** 把 raw 直链转换为各加速源代理地址（供 update.json 内的 apkUrl 兜底用） */
     fun mirrorCandidates(rawUrl: String): List<String> {
         if (!rawUrl.startsWith("https://raw.githubusercontent.com/")) return listOf(rawUrl)
-        return MIRRORS.map { "$it$rawUrl" } + rawUrl
+        return MIRRORS.map { "${it.url}$rawUrl" } + rawUrl
     }
+
+    /** 供 UI 展示的加速源列表（只读快照，label 为展示名） */
+    val MIRRORS_PUBLIC: List<MirrorEntry> get() = MIRRORS
 }

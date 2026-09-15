@@ -3,6 +3,8 @@ package com.open.wuling.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -49,11 +51,17 @@ fun ACControlSheet(
         containerColor = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
     ) {
+        // v39：补上 verticalScroll —— 与位置页（v38）同一个坑。
+        // 面板内容约 686dp（标题 + 温度 + 快速模式 + 分隔线 + 风速档位 + 说明 + 底部留白），
+        // 而 BottomSheet 最多只有屏高的 70~90%，底部的**风速档位格子**（可点击控件）
+        // 会被切到屏幕外且滑不到。项目里 ThemeSettingsSheet / BleAutoLockSheet 都写了
+        // 这一行，唯独这里漏了；写法与 BleAutoLockSheet 保持一致。
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
                 .padding(bottom = 32.dp)
+                .verticalScroll(rememberScrollState())
         ) {
             // 标题栏
             Row(
