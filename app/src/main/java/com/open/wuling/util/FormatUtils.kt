@@ -69,6 +69,24 @@ object FormatUtils {
     }
 
     /**
+     * 上/下电文本（五菱API keyStatus：0=无钥匙, 1=已连接, 2=已启动）
+     *
+     * v56：keyStatus 是钥匙连接态，不是点火态。直接按「非 2 即下电」展示会在
+     * 车机靠近车辆、蓝牙钥匙已连接但未上电时误报「下电」，所以这里把 0/1 都
+     * 归为下电并统一走 getPowerStatusText 判断，避免各处自行比较字符串。
+     */
+    fun isPowerOn(keyStatus: String?): Boolean = keyStatus == "2"
+
+    /**
+     * 上/下电文本。未知（keyStatus 为 null 或空）返回「--」，不猜测。
+     */
+    fun getPowerStatusText(keyStatus: String?): String = when (keyStatus) {
+        "2" -> "上电"
+        "0", "1" -> "下电"
+        else -> "--"
+    }
+
+    /**
      * 布尔值转"打开/关闭"
      */
     fun getOpenText(isOpen: Boolean): String = if (isOpen) "打开" else "关闭"

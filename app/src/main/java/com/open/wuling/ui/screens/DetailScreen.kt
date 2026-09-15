@@ -1,7 +1,5 @@
 package com.open.wuling.ui.screens
 
-import com.open.wuling.analytics.UmengPageView
-
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,16 +8,20 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.DoorFront
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.TireRepair
@@ -40,8 +42,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.open.wuling.data.model.Vehicle
-import com.open.wuling.ui.components.DetailRow
-import com.open.wuling.ui.components.DetailSectionHeader
 import com.open.wuling.ui.theme.*
 import com.open.wuling.ui.theme.LocalCardAlpha
 import com.open.wuling.util.FormatUtils
@@ -53,8 +53,6 @@ fun DetailScreen(
     onRefresh: () -> Unit = {},
     onQuickRefresh: () -> Unit = {}
 ) {
-    UmengPageView("详情")
-
     val scrollState = rememberScrollState()
 
     // 每 5 秒快速刷新（仅主状态，保留诊断/胎压/昨日里程）
@@ -97,8 +95,55 @@ fun DetailScreen(
             }
         } else {
             val status = vehicle.status
-            // 注：车辆静态信息（车型/VIN/配置等）已统一收敛到「我的」页点击车辆卡查看，
-            // 本页专注展示实时状态，不再重复渲染静态档案。
+            val info = vehicle.carInfo
+
+            // ====== 整机状态横幅（v56）======
+            // 上电/下电是这一页所有数据的「语境」：上电时车内温度、空调、门窗读数才有实时意义，
+            // 下电时多为上一次熄火快照。所以提到最顶部做成一条通栏，而不是埋在「驾驶状态」列表里。
+            PowerStateBanner(
+                isPowerOn = FormatUtils.isPowerOn(status.keyStatus),
+                keyStatusText = FormatUtils.getKeyStatusText(status.keyStatus)
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // ====== 车辆信息 ======
+            DetailSectionHeader(icon = Icons.Filled.DirectionsCar, title = "车辆信息", color = MaterialTheme.colorScheme.primary)
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = LocalCardAlpha.current)),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    if (info != null) {
+                        DetailRow("车型", FormatUtils.safeString(info.carTypeName.ifEmpty { vehicle.name }))
+                        DetailRow("型号", FormatUtils.safeString(info.model.ifEmpty { vehicle.model }))
+                        DetailRow("配置", FormatUtils.safeString(info.seriesCode))
+                        DetailRow("VIN", FormatUtils.safeString(info.vin.ifEmpty { vehicle.vin }))
+                        DetailRow("车牌", FormatUtils.safeString(info.carPlate.ifEmpty { vehicle.licensePlate }))
+                        DetailRow("颜色", FormatUtils.safeString(info.colorName.ifEmpty { info.colorCode }))
+                        DetailRow("年份", FormatUtils.safeString(info.carYear))
+                        DetailRow("VSN", FormatUtils.safeString(info.vsn))
+                        DetailRow("等级", FormatUtils.safeString(info.level))
+                        DetailRow("动力类型", FormatUtils.getPowerTypeDisplay(vehicle))
+                        DetailRow("供应商", FormatUtils.safeString(info.providerCode))
+                        DetailRow("购买人", FormatUtils.safeString(info.purchaseUserName))
+                        DetailRow("购买店号", FormatUtils.safeString(info.purchaseShopNum))
+                        DetailRow("购车日期", FormatUtils.formatDate(info.purchaseDate))
+                        DetailRow("绑定手机", FormatUtils.safeString(info.bindCarUserMobile))
+                        DetailRow("绑定状态", if (info.finishBind) "已绑定" else "未绑定")
+                        DetailRow("蓝牙钥匙", FormatUtils.safeString(info.bluetoothKeyConnectMark))
+                        DetailRow("摇晃解锁", if (info.shakeLock == 1) "开启" else "关闭")
+                    } else {
+                        DetailRow("车型", FormatUtils.safeString(vehicle.name))
+                        DetailRow("型号", FormatUtils.safeString(vehicle.model))
+                        DetailRow("车牌", FormatUtils.safeString(vehicle.licensePlate))
+                        DetailRow("VIN", FormatUtils.safeString(vehicle.vin))
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
 
             // ====== 电池 & 电量 ======
             DetailSectionHeader(icon = Icons.Filled.BatteryChargingFull, title = "电池与充电", color = PrimaryGreen)
@@ -233,7 +278,10 @@ fun DetailScreen(
                     DetailRow("方向盘角度", "${status.steeringWheelAngle}°")
                     DetailRow("刹车踏板", "${status.brakePedalPosition}")
                     DetailRow("油门踏板", "${status.accPosition}")
+                    // v56：原「钥匙状态」保留（它是原始枚举：无钥匙/已连接/已启动），
+                    //      在其上方补一行结果态「整机状态」，用户不必自己把 keyStatus 翻译成上/下电。
                     DetailRow("钥匙状态", FormatUtils.getKeyStatusText(status.keyStatus))
+                    DetailRow("整机状态", FormatUtils.getPowerStatusText(status.keyStatus))
                     DetailRow("哨兵模式", if (status.sentinelModeStatus) "开启" else "关闭")
                     DetailRow("智能驾驶", if (status.intelligentCarSwitch == 1) "开启" else "关闭")
                     DetailRow("限距反馈", FormatUtils.safeString(status.limitFeedback))
@@ -323,4 +371,107 @@ fun DetailScreen(
     }
 }
 
-// DetailSectionHeader / DetailRow 已提升为公共组件，见 ui/components/DetailRows.kt
+// ====== Section Header ======
+@Composable
+private fun DetailSectionHeader(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, color: Color) {
+    Row(
+        modifier = Modifier.padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = color,
+            modifier = Modifier.padding(end = 8.dp)
+        )
+        Text(
+            text = title,
+            fontSize = 17.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+
+// ====== 整机状态横幅（v56）======
+/**
+ * 详情页顶部通栏上/下电状态。
+ *
+ * @param isPowerOn 是否已上电（keyStatus == "2"）
+ * @param keyStatusText 原始钥匙状态文案，作为右侧明细展示，保留溯源能力
+ */
+@Composable
+private fun PowerStateBanner(isPowerOn: Boolean, keyStatusText: String) {
+    // 上电 = 车在通电，用绿；下电 = 正常熄火停放态，用中性色。
+    // 这里刻意不给下电配橙色/红色：下电才是绝大多数时间的常态，染成告警色会变成"天天报警"。
+    val accent = if (isPowerOn) BatteryGreen else MaterialTheme.colorScheme.onSurfaceVariant
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = LocalCardAlpha.current)),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // 电源图标 + 状态点，构成一个一眼可辨的"通电指示灯"
+            Icon(
+                imageVector = Icons.Filled.PowerSettingsNew,
+                contentDescription = null,
+                tint = accent,
+                modifier = Modifier.size(22.dp)
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Column {
+                Text(
+                    text = if (isPowerOn) "已上电" else "已下电",
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = accent
+                )
+                Text(
+                    text = if (isPowerOn) "车辆处于通电状态，数据实时" else "车辆处于断电/熄火状态，读数为最近一次快照",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(modifier = Modifier.weight(1f))
+            Text(
+                text = keyStatusText,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+// ====== Detail Row ======
+@Composable
+private fun DetailRow(label: String, value: String, isWarning: Boolean = false) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            fontSize = 14.sp,
+            color = if (isWarning) PrimaryRed else MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.Medium
+        )
+    }
+    Divider(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        thickness = 0.5.dp
+    )
+}

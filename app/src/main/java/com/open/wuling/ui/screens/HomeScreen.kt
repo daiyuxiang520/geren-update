@@ -27,6 +27,8 @@ import com.open.wuling.ble.BleAutoLockManager
 import com.open.wuling.data.model.ControlCommand
 import com.open.wuling.data.model.Vehicle
 import com.open.wuling.data.model.VehicleStatus
+import com.open.wuling.data.model.hasAnyOpen
+import com.open.wuling.util.FormatUtils
 import com.open.wuling.ui.theme.*
 import com.open.wuling.ui.theme.LocalCardAlpha
 
@@ -130,6 +132,13 @@ fun HomeScreen(
                 QuickControlSection(
                     isLocked = vehicle.status.isLocked,
                     isClimateOn = vehicle.status.isClimateOn,
+                    windowsOpen = vehicle.status.windows.hasAnyOpen(
+                        vehicle.status.window1OpenDegree,
+                        vehicle.status.window2OpenDegree,
+                        vehicle.status.window3OpenDegree,
+                        vehicle.status.window4OpenDegree
+                    ),
+                    isPowerOn = FormatUtils.isPowerOn(vehicle.status.keyStatus),
                     onCommand = onCommand
                 )
 
@@ -272,7 +281,8 @@ private fun HomeTopBar(
 private fun VehicleSummaryCard(vehicle: Vehicle) {
     val status = vehicle.status
     val showFuel = vehicle.hasFuel && status.leftFuel > 0
-    val isPowerOn = status.keyStatus == "2"
+    // v56：统一走 FormatUtils，避免 HomeScreen / 详情页 / 桌面小组件三处各写一套 keyStatus 判断
+    val isPowerOn = FormatUtils.isPowerOn(status.keyStatus)
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -352,7 +362,7 @@ private fun VehicleSummaryCard(vehicle: Vehicle) {
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = if (isPowerOn) "上电" else "下电",
+                        text = FormatUtils.getPowerStatusText(status.keyStatus),
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.align(Alignment.CenterVertically)
@@ -458,6 +468,8 @@ private fun TireDot(value: Double) {
 private fun QuickControlSection(
     isLocked: Boolean,
     isClimateOn: Boolean,
+    windowsOpen: Boolean,
+    isPowerOn: Boolean,
     onCommand: (ControlCommand) -> Unit
 ) {
     Column {
@@ -472,10 +484,26 @@ private fun QuickControlSection(
                 color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(modifier = Modifier.weight(1f))
+            // v53：状态行补上「车窗」。只表达"有没有窗没关"这一个用户真正关心的信息 ——
+            //      四窗状态全展开塞不进这行（它只有约 1/3 宽度），而且全关是默认态、无需报告。
+            //      未关时同步转为橙色，做成一个"需要你注意"的视觉信号。
+            // v56：再补上「上电/下电」。车已上电 = 有人在场/车在通电，是锁车前最该确认的一环；
+            //      放在最前面，与顶部大卡片圆点、详情页整机状态呼应。
             Text(
-                text = "车辆状态：" + (if (isLocked) "已锁" else "未锁") + " · " + (if (isClimateOn) "空调开启" else "空调关闭"),
+                text = buildString {
+                    append("车辆状态：")
+                    append(if (isPowerOn) "上电" else "下电")
+                    append(" · ")
+                    append(if (isLocked) "已锁" else "未锁")
+                    append(" · ")
+                    append(if (isClimateOn) "空调开启" else "空调关闭")
+                    append(" · ")
+                    append(if (windowsOpen) "车窗未关" else "车窗全关")
+                },
                 fontSize = 13.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                // 车窗未关 = 潜在风险（淋雨／被盗），用告警色；其余保持弱化文字色
+                color = if (windowsOpen) PrimaryOrange else MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = if (windowsOpen) FontWeight.Medium else FontWeight.Normal
             )
         }
         Spacer(modifier = Modifier.height(12.dp))
@@ -509,8 +537,11 @@ private fun QuickControlSection(
             QuickButton(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Filled.PowerSettingsNew,
-                label = "启动",
-                tint = MaterialTheme.colorScheme.primary,
+                // v56：按当前上/下电状态切换文案与配色。上电后按钮转为「已上电」提示态（绿），
+                //      避免用户反复点「启动」却看不到反馈 —— 车机上这个按钮此前无任何状态表达。
+                //      说明：底层仍走同一个 IGNITION 授权指令（远程启动/授权点火），文案随状态走。
+                label = if (isPowerOn) "已上电" else "启动",
+                tint = if (isPowerOn) BatteryGreen else MaterialTheme.colorScheme.primary,
                 onClick = { onCommand(ControlCommand.IGNITION) }
             )
         }
