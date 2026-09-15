@@ -1,17 +1,34 @@
 name: Attach APK to Release
 
+# 用途：把 APK 作为 Release 附件挂上去。
+#
+# 背景：部分网络环境下 uploads.github.com 不可达（该域名是 GitHub 唯一的上传通道），
+#       而本 workflow 运行在 GitHub 自己的 runner 上，访问该域名没有障碍。
+#       因此把它作为"上传中继"：只需要能访问 api.github.com 就能触发。
+#
 # 触发方式：
-#   1) 手动（workflow_dispatch）
-#   2) push tag 时自动
-# 用途：把仓库根目录的 APK 作为 Release 附件挂上去。
-#       之所以需要这个 workflow，是因为部分网络环境下 uploads.github.com 不可达，
-#       而 Actions runner 在 GitHub 侧，访问该域名没有障碍。
+#   1) 手动派发（workflow_dispatch）—— 指定 tag 与源文件路径
+#   2) push 形如 v* 的 tag 时自动挂载仓库根目录的 wuling-assistant.apk
+#
+# 用法示例：
+#   gh workflow run attach-apk.yml -f tag=v57 -f asset=wuling-assistant.apk
+#   gh workflow run attach-apk.yml -f tag=v41 -f asset=artifacts/v41.apk
 on:
   workflow_dispatch:
     inputs:
       tag:
         description: '目标 Release tag（如 v57）'
         required: true
+        type: string
+      asset:
+        description: '要挂载的 APK 路径（仓库内相对路径）'
+        required: false
+        default: 'wuling-assistant.apk'
+        type: string
+      asset_name:
+        description: '挂载后的附件名（默认取源文件名）'
+        required: false
+        default: ''
         type: string
   push:
     tags:
@@ -27,13 +44,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: 解析目标 tag
+      - name: 解析参数
         id: meta
         run: |
           if [ -n "${{ inputs.tag }}" ]; then
             echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
           else
             echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -n "${{ inputs.asset }}" ]; then
+            echo "asset=${{ inputs.asset }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "asset=wuling-assistant.apk" >> "$GITHUB_OUTPUT"
           fi
 
       - name: 挂载 APK 到 Release
@@ -42,12 +64,16 @@ jobs:
         run: |
           set -e
           TAG="${{ steps.meta.outputs.tag }}"
-          echo "目标 Release: $TAG"
-          APK="wuling-assistant.apk"
-          test -f "$APK" || { echo "仓库根目录缺少 $APK"; exit 1; }
-          ls -la "$APK"
-          md5sum "$APK" || true
-          # 若附件已存在则先删除，避免重名冲突
-          gh release upload "$TAG" "$APK" --clobber
-          echo "--- 结果 ---"
+          SRC="${{ steps.meta.outputs.asset }}"
+          NAME="${{ inputs.asset_name }}"
+          [ -z "$NAME" ] && NAME="$(basename "$SRC")"
+          echo "目标 Release : $TAG"
+          echo "源文件       : $SRC"
+          echo "附件名       : $NAME"
+          test -f "$SRC" || { echo "::error::源文件不存在: $SRC"; exit 1; }
+          ls -la "$SRC"
+          sha256sum "$SRC"
+          # 同名附件已存在时覆盖，避免重跑冲突
+          gh release upload "$TAG" "$SRC#$NAME" --clobber
+          echo "--- 挂载结果 ---"
           gh release view "$TAG" --json assets -q '.assets[] | "\(.name)  \(.size) bytes"'
