@@ -216,4 +216,66 @@ object FormatUtils {
             else -> "无此功能"
         }
     }
+
+    // ====== 官方采集时间（v62）======
+    //
+    // 车况接口的 collectTime 与经纬度在同一个响应包里下发，它就是「官方下发车辆
+    // 位置/状态数据」的时间戳。官方格式未经文档确认（实测为可读字符串），这里
+    // 同时兼容常见的几种写法 + 纯数字时间戳，解析失败返回 null，调用方自行回退。
+
+    private val COLLECT_TIME_FORMATS = listOf(
+        "yyyy-MM-dd HH:mm:ss",
+        "yyyy/MM/dd HH:mm:ss",
+        "yyyy-MM-dd'T'HH:mm:ss",
+        "yyyy年MM月dd日 HH:mm:ss"
+    )
+
+    /**
+     * 解析官方 collectTime 为 epoch 毫秒。
+     * 兼容 "yyyy-MM-dd HH:mm:ss" 等常见格式与纯数字（秒/毫秒）时间戳；失败返回 null。
+     * 每次新建 SimpleDateFormat（非线程安全，且本函数会被 IO 线程调用）。
+     */
+    fun parseCollectTime(raw: String?): Long? {
+        val s = raw?.trim().takeUnless { it.isNullOrEmpty() } ?: return null
+        // 纯数字：1e11 以上按毫秒（1973 年起），以下按秒（2286 年前的秒级时间戳都 < 1e10）
+        s.toLongOrNull()?.let { n ->
+            return if (n >= 100_000_000_000L) n else n * 1000
+        }
+        for (pattern in COLLECT_TIME_FORMATS) {
+            try {
+                val sdf = java.text.SimpleDateFormat(pattern, java.util.Locale.US)
+                sdf.isLenient = false
+                val d = sdf.parse(s) ?: continue
+                return d.time
+            } catch (_: Exception) {
+                // 换下一个格式
+            }
+        }
+        return null
+    }
+
+    /** 相对时间文案：刚刚 / N 分钟前 / N 小时前 / N 天前。未来时间（时钟偏差）按刚刚处理。 */
+    fun relativeTimeText(epochMs: Long, nowMs: Long = System.currentTimeMillis()): String {
+        val minutes = (nowMs - epochMs) / 60_000
+        return when {
+            minutes < 1 -> "刚刚"
+            minutes < 60 -> "$minutes 分钟前"
+            minutes < 1440 -> "${minutes / 60} 小时前"
+            else -> "${minutes / 1440} 天前"
+        }
+    }
+
+    /** 绝对时间：当天显示 HH:mm:ss，跨天显示 MM-dd HH:mm:ss（找车场景下「哪天」同样重要）。 */
+    fun formatCollectTimeAbs(epochMs: Long, nowMs: Long = System.currentTimeMillis()): String {
+        return try {
+            val cal = java.util.Calendar.getInstance().apply { timeInMillis = epochMs }
+            val nowCal = java.util.Calendar.getInstance().apply { timeInMillis = nowMs }
+            val sameDay = cal.get(java.util.Calendar.YEAR) == nowCal.get(java.util.Calendar.YEAR) &&
+                cal.get(java.util.Calendar.DAY_OF_YEAR) == nowCal.get(java.util.Calendar.DAY_OF_YEAR)
+            val pattern = if (sameDay) "HH:mm:ss" else "MM-dd HH:mm:ss"
+            java.text.SimpleDateFormat(pattern, java.util.Locale.US).format(java.util.Date(epochMs))
+        } catch (_: Exception) {
+            "--"
+        }
+    }
 }

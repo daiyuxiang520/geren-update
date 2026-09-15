@@ -42,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.open.wuling.data.model.Vehicle
+import com.open.wuling.ui.components.CollectTimeText
 import com.open.wuling.ui.theme.*
 import com.open.wuling.ui.theme.LocalCardAlpha
 import com.open.wuling.util.FormatUtils
@@ -365,6 +366,9 @@ fun DetailScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     DetailRow("采集时间", FormatUtils.safeString(status.collectTime))
+                    // v62：相对时间 + 陈旧提示（解析失败时组件回退原样字符串）
+                    Spacer(modifier = Modifier.height(8.dp))
+                    CollectTimeText(collectTime = status.collectTime)
                 }
             }
 

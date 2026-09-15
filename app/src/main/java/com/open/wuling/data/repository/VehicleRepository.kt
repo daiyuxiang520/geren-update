@@ -16,6 +16,7 @@ import com.open.wuling.data.api.toVehicleStatus
 import com.open.wuling.data.model.Vehicle
 import com.open.wuling.data.model.VehicleLocation
 import com.open.wuling.data.model.VehicleStatus
+import com.open.wuling.util.FormatUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -118,7 +119,12 @@ class VehicleRepository @Inject constructor(
             location = if (apiStatus.latitude != null && apiStatus.longitude != null) {
                 VehicleLocation(
                     latitude = apiStatus.latitude,
-                    longitude = apiStatus.longitude
+                    longitude = apiStatus.longitude,
+                    // v62：timestamp 改为官方采集时间（collectTime 与经纬度同包下发）。
+                    // 原先走默认值 System.currentTimeMillis()，是「App 收到响应」的本地时间，
+                    // 与官方数据时间不是一回事；解析失败才回退本地时间。
+                    timestamp = FormatUtils.parseCollectTime(apiStatus.collectTime)
+                        ?: System.currentTimeMillis()
                 )
             } else null,
             isPureElectric = caps.energyKind == "ev",

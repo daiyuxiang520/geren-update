@@ -52,11 +52,13 @@ import com.open.wuling.data.local.WeatherCodeMap
 import com.open.wuling.data.local.WeatherInfo
 import com.open.wuling.data.model.Vehicle
 import com.open.wuling.ui.components.AmapView
+import com.open.wuling.ui.components.CollectTimeText
 import com.open.wuling.ui.components.reloadMap
 import com.open.wuling.ui.theme.*
 import com.open.wuling.ui.theme.LocalCardAlpha
 import com.open.wuling.util.AppLogger
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.util.Locale
 
@@ -114,17 +116,15 @@ fun LocationScreen(
     val hasValidLocation = location?.latitude != null && location.longitude != null
     val hasAmapKey = amapKey.isNotEmpty()
 
-    // 坐标纠偏（WGS84 → GCJ-02）：TBOX 原始 GPS 投到高德地图会偏 200~600 米，默认纠偏
-    var coordOffsetEnabled by remember {
-        mutableStateOf(CoordConverter.isOffsetEnabled(context))
-    }
+    // ===== 坐标纠偏（WGS84 → GCJ-02）：固定开启，v50 起不再提供 UI 开关 =====
+    //
+    // TBOX 上报的是 WGS84 原始 GPS，高德地图用 GCJ-02，直接投点会偏 200~600 米，
+    // 因此纠偏是**必需**步骤而非可选项：普通用户没有判断基准，开关留在界面上
+    // 只会被误关（关了之后车点反而更偏），属于纯风险项。
+    // 现在恒定纠偏，境外坐标由 CoordConverter 内部原样返回，无需特判。
     val displayLocation = location?.let { loc ->
-        if (coordOffsetEnabled) {
-            val (lat, lon) = CoordConverter.convert(context, loc.latitude, loc.longitude)
-            loc.copy(latitude = lat, longitude = lon)
-        } else {
-            loc
-        }
+        val (lat, lon) = CoordConverter.convert(context, loc.latitude, loc.longitude)
+        loc.copy(latitude = lat, longitude = lon)
     }
 
     // ===== 坐标兜底（v36）=====
@@ -216,8 +216,8 @@ fun LocationScreen(
     //
     // 这一行就是「天气看不见」「小区两个字下面缺一点」的真正原因，与 Key、网络、
     // 状态、缓存全都无关：
-    // 本页内容 = Header(~44dp) + Key 配置区(展开约 400dp) + 地图(300dp)
-    //          + 纠偏开关(~76dp) + 位置卡片(~210dp) + 操作按钮(~48dp) ≈ 700dp 以上，
+        // 本页内容 = Header(~44dp) + Key 配置区(展开约 400dp) + 地图(300dp)
+        //          + 位置卡片(~210dp) + 操作按钮(~48dp) ≈ 700dp 以上，
     // 而最外层 Column 用 fillMaxSize() 被锁死在屏幕高度、且**没有 verticalScroll** ——
     // 超出屏幕的部分既渲染不出来也滑不到。位置卡片正好被屏幕底边/底部导航栏切掉，
     // 于是「小区」只露出上半截，排在卡片最后的天气行则完全落在屏幕外。
@@ -497,6 +497,10 @@ fun LocationScreen(
                     // v38 加整页滚动后，Compose 会截走触摸事件，WebView 收不到 MOVE
                     // → 「地图不动、页面在滚」。与其和页面抢手势，不如让小地图彻底
                     // 不参与：页面一路滑到底，要看/要操作就点右上角「全屏」。
+                    //
+                    // v52：预览图也改为 3D（与全屏一致）。因为不参与手势，这里只取
+                    //      俯仰角带来的立体观感，不带旋转/倾斜交互（也带不了）。
+                    //      尺寸小，俯仰角相应调小，避免楼块在窄框里糊成一团。
                     AmapView(
                         longitude = displayLocation!!.longitude,
                         latitude = displayLocation.latitude,
@@ -504,7 +508,9 @@ fun LocationScreen(
                         zoomLevel = 16,
                         showMarker = true,
                         interactive = false,
-                        key = amapKey
+                        key = amapKey,
+                        use3D = true,
+                        pitch3D = 35
                     )
 
                     // 全屏入口（右上角，避开右下角高德工具条）
@@ -558,8 +564,7 @@ fun LocationScreen(
         Spacer(modifier = Modifier.height(12.dp))
 
         // ===== 位置信息卡片（v37）=====
-        // v38：把「坐标纠偏」开关挪到页面最底部，位置卡片因此整体上移约 76dp，
-        //      地址与天气在多数机型上能直接落进首屏，不必依赖滚动。
+        // v50：页面底部的「坐标纠偏」开关已移除（纠偏恒开），卡片整体再上移。
         //
         // ⚠️ 原来写成 location?.let { ... } ?: run { 暂无位置信息 }：
         //    location 会随 30 秒刷新短暂变 null，整张卡片会被替换成「暂无车辆位置信息」
@@ -613,6 +618,14 @@ fun LocationScreen(
                             value = String.format("%.6f", cardCoord.first)
                         )
                     }
+
+                    // v62：官方下发时间。collectTime 与经纬度同包返回，即「位置下发时间」；
+                    //      带「N 分钟前」相对时间，超 10 分钟橙色提示车辆可能离线（TBox 休眠）。
+                    Spacer(modifier = Modifier.height(10.dp))
+                    CollectTimeText(
+                        collectTime = vehicle?.status?.collectTime,
+                        prefix = "位置更新于"
+                    )
 
                     if (!displayAddress.isNullOrEmpty()) {
                         Spacer(modifier = Modifier.height(12.dp))
@@ -807,43 +820,8 @@ fun LocationScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // 坐标纠偏开关（v38：从位置卡片上方挪到这里，见上方说明）
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = LocalCardAlpha.current)),
-            shape = RoundedCornerShape(14.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "坐标纠偏 (WGS84 → 高德)",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = if (coordOffsetEnabled) "已开启：车点偏东/北方向时保持开启" else "已关闭：若开启后车点更偏请保持关闭",
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Switch(
-                    checked = coordOffsetEnabled,
-                    onCheckedChange = {
-                        coordOffsetEnabled = it
-                        CoordConverter.setOffsetEnabled(context, it)
-                    }
-                )
-            }
-        }
+        // v50：原先这里的「坐标纠偏」开关卡片已移除 —— 纠偏改为恒定开启，
+        //      界面上不再暴露开关。少掉约 76dp 高度，滚动距离同步缩短。
 
         // 底部留白：paddingValues 已经为底部导航让过位，这里只需一点呼吸空间。
         // ⚠️ 原来是 100.dp —— 在不可滚动的 Column 里它只是一块纯浪费的空白，
@@ -874,8 +852,29 @@ fun LocationScreen(
                             zoomLevel = 16,
                             showMarker = true,
                             interactive = true,   // 全屏：完整手势（平移 / 缩放）
-                            key = amapKey
+                            key = amapKey,
+                            // v51：全屏地图启用 3D（楼块 + 俯仰/旋转 + 罗盘控制盘）。
+                            // 车机 WebView 不支持 WebGL 时，组件内部会自动回落 2D，不会白图。
+                            use3D = true
                         )
+                        // v51：记录 3D 实际是否生效 —— 有的车机 WebGL 不可用会被静默回落成 2D，
+                        // 只有把探测结果打出来，排查时才知道用户到底看到的是哪种视图。
+                        LaunchedEffect(fsCoord, amapKey) {
+                            delay(2500)  // 等地图脚本初始化完成后再读探测标记
+                            webViewRef?.evaluateJavascript(
+                                "(window.__wulingMap3D === undefined ? -1 : window.__wulingMap3D)"
+                            ) { r ->
+                                val v = r?.trim()?.removePrefix("\"")?.removeSuffix("\"")
+                                AppLogger.i(
+                                    "LocationScreen",
+                                    "全屏地图 3D 探测结果: " + when (v) {
+                                        "1" -> "3D 已启用"
+                                        "0" -> "WebGL 不可用，已回落 2D"
+                                        else -> "未取到标记（脚本可能未执行）"
+                                    }
+                                )
+                            }
+                        }
                     } else {
                         Text(
                             text = if (!hasAmapKey) "请先配置高德地图 Key" else "暂无位置信息",
