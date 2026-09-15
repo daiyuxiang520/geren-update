@@ -162,33 +162,27 @@ fun ProfileScreen(
                     .padding(20.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // 车辆图片头像
+                // 车辆图片（与首页车辆卡一致：圆角方框、无背景底、Fit 完整显示整车）
                 Box(
                     modifier = Modifier
-                        .size(70.dp)
-                        .clip(CircleShape)
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary.copy(alpha = 0.7f))
-                            )
-                        ),
+                        .width(88.dp)
+                        .height(72.dp)
+                        .clip(RoundedCornerShape(14.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     if (!vehicleImage.isNullOrEmpty()) {
                         Image(
                             painter = rememberAsyncImagePainter(model = vehicleImage),
                             contentDescription = "车辆图片",
-                            modifier = Modifier
-                                .size(70.dp)
-                                .clip(CircleShape),
-                            contentScale = ContentScale.Crop
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Fit
                         )
                     } else {
                         Icon(
                             imageVector = Icons.Filled.DirectionsCar,
                             contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(36.dp)
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(40.dp)
                         )
                     }
                 }
@@ -198,7 +192,7 @@ fun ProfileScreen(
                 Column(modifier = Modifier.weight(1f)) {
                     // 绑定手机号（置顶，作为主标题显示）
                     Text(
-                        text = if (!bindPhone.isNullOrEmpty()) "📱 $bindPhone" else "未绑定手机",
+                        text = if (!bindPhone.isNullOrEmpty()) bindPhone else "未绑定手机",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
@@ -214,12 +208,6 @@ fun ProfileScreen(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                TextButton(onClick = { /* Edit profile */ }) {
-                    Text("编辑", color = MaterialTheme.colorScheme.primary)
                 }
             }
         }
