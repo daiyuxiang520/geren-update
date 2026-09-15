@@ -1,8 +1,8 @@
 {
-  "versionCode": 50,
-  "versionName": "3.47.0-android16",
-  "updateLog": "v50 (3.47.0) 更新内容：\n1. 「位置」页移除「坐标纠偏 (WGS84 → 高德)」开关，纠偏改为恒定开启\n2. 普通用户无需理解坐标系差异，也不会再误关导致车点偏移 200~600 米\n3. 位置页随之减去约 76dp 高度，页面更紧凑，滚动距离更短",
+  "versionCode": 51,
+  "versionName": "3.48.0-android16",
+  "updateLog": "v51 (3.48.0) 更新内容：\n1. 全屏地图升级为 3D 视图：显示立体楼块、支持俯仰与旋转手势\n2. 新增罗盘控制盘，可直观调整地图朝向与倾角\n3. 智能兼容：设备不支持 WebGL 时自动回落 2D，保证地图正常显示不空白\n4. 位置页小地图保持 2D 静态预览不变，页面流畅度不受影响",
   "apkUrl": "https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "939a6de84cd6ff681ebc41fd326c9ed2"
+  "md5": "a29ead891359824c8453e97567c5430e"
 }
