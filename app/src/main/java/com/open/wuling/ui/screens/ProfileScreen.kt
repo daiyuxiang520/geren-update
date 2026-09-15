@@ -65,6 +65,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
@@ -74,6 +78,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -1087,6 +1093,36 @@ private fun LogViewerSheet(
     var logs by remember { mutableStateOf(AppLogger.getAllLogs()) }
     var logEnabled by remember { mutableStateOf(AppLogger.isEnabled()) }
 
+    // v59：筛选（等级 / tag）与搜索
+    var levelFilter by remember { mutableStateOf<AppLogger.Level?>(null) }
+    var tagFilter by remember { mutableStateOf<String?>(null) }
+    var query by remember { mutableStateOf("") }
+
+    // v59：details 展开状态（key=时间戳毫秒，毫秒内冲突极低，丢状态也只是收起）
+    val expandedMap = remember { mutableStateMapOf<Long, Boolean>() }
+
+    val context = LocalContext.current
+
+    // v59：打开期间每秒自动刷新（此前需手动点「刷新」；详情页 5 秒轮询在滚，手动跟不住）
+    LaunchedEffect(Unit) {
+        while (true) {
+            logs = AppLogger.getAllLogs()
+            kotlinx.coroutines.delay(1000)
+        }
+    }
+
+    // 等级 / tag 可选项从当前日志派生
+    val tagOptions = remember(logs) { logs.map { it.tag }.distinct().sorted() }
+    val filtered = remember(logs, levelFilter, tagFilter, query) {
+        logs.filter { entry ->
+            (levelFilter == null || entry.level == levelFilter) &&
+                (tagFilter == null || entry.tag == tagFilter) &&
+                (query.isBlank() || entry.message.contains(query, ignoreCase = true) ||
+                    entry.tag.contains(query, ignoreCase = true) ||
+                    entry.details?.contains(query, ignoreCase = true) == true)
+        }.asReversed() // 最新在前；asReversed 是视图不复制列表
+    }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -1111,7 +1147,7 @@ private fun LogViewerSheet(
 
                 Spacer(modifier = Modifier.weight(1f))
 
-                // 启用/禁用开关
+                // 启用/禁用开关（v59：状态持久化到 DataStore，重启后保持）
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = "记录",
@@ -1132,26 +1168,109 @@ private fun LogViewerSheet(
                     )
                 }
 
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(4.dp))
 
-                // 清空按钮
+                // v59：导出——把当前筛选结果拼成文本走系统分享，报问题时直接发出
+                TextButton(
+                    enabled = filtered.isNotEmpty(),
+                    onClick = {
+                        val text = filtered.sortedBy { it.timestamp }
+                            .joinToString("\n") { entry ->
+                                buildString {
+                                    append("[${entry.formattedTime}][${entry.level.name}][${entry.tag}] ${entry.message}")
+                                    if (!entry.details.isNullOrBlank()) append("\n    ${entry.details}")
+                                }
+                            }
+                        runCatching {
+                            val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(android.content.Intent.EXTRA_TEXT, text)
+                            }
+                            context.startActivity(Intent.createChooser(intent, "分享调试日志"))
+                        }
+                    }
+                ) {
+                    Text("导出", color = MaterialTheme.colorScheme.primary)
+                }
+
+                // 清空（v59：内存 + 磁盘一起清）
                 TextButton(onClick = {
                     AppLogger.clear()
                     logs = emptyList()
                 }) {
                     Text("清空", color = PrimaryRed)
                 }
+            }
 
-                // 刷新按钮
-                TextButton(onClick = { logs = AppLogger.getAllLogs() }) {
-                    Text("刷新", color = MaterialTheme.colorScheme.primary)
+            // v59：筛选行——等级 chips
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilterChip(
+                    selected = levelFilter == null,
+                    onClick = { levelFilter = null },
+                    label = { Text("全部", fontSize = 12.sp) }
+                )
+                AppLogger.Level.entries.forEach { level ->
+                    FilterChip(
+                        selected = levelFilter == level,
+                        onClick = { levelFilter = if (levelFilter == level) null else level },
+                        label = {
+                            Text(
+                                text = when (level) {
+                                    AppLogger.Level.DEBUG -> "D"
+                                    AppLogger.Level.INFO -> "I"
+                                    AppLogger.Level.WARN -> "W"
+                                    AppLogger.Level.ERROR -> "E"
+                                },
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    )
                 }
+            }
+
+            // v59：筛选行——tag 下拉 + 搜索框
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (tagOptions.isNotEmpty()) {
+                    var tagMenuOpen by remember { mutableStateOf(false) }
+                    Box {
+                        FilterChip(
+                            selected = tagFilter != null,
+                            onClick = { tagMenuOpen = true },
+                            label = { Text(text = tagFilter ?: "Tag", fontSize = 12.sp, maxLines = 1) }
+                        )
+                        DropdownMenu(expanded = tagMenuOpen, onDismissRequest = { tagMenuOpen = false }) {
+                            DropdownMenuItem(text = { Text("全部 Tag") }, onClick = { tagFilter = null; tagMenuOpen = false })
+                            tagOptions.forEach { tag ->
+                                DropdownMenuItem(
+                                    text = { Text(tag, maxLines = 1) },
+                                    onClick = { tagFilter = tag; tagMenuOpen = false }
+                                )
+                            }
+                        }
+                    }
+                }
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    modifier = Modifier.weight(1f).height(52.dp),
+                    placeholder = { Text("搜索消息/Tag/详情…", fontSize = 13.sp) },
+                    singleLine = true,
+                    textStyle = LocalTextStyle.current.copy(fontSize = 13.sp)
+                )
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
             // Log list
-            if (logs.isEmpty()) {
+            if (filtered.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1159,7 +1278,7 @@ private fun LogViewerSheet(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "暂无日志\n执行操作后日志将显示在这里",
+                        text = if (logs.isEmpty()) "暂无日志\n执行操作后日志将显示在这里" else "无匹配结果",
                         fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     )
@@ -1170,8 +1289,24 @@ private fun LogViewerSheet(
                         .fillMaxWidth()
                         .weight(1f)
                 ) {
-                    items(logs.reversed()) { entry ->
-                        LogItem(entry = entry)
+                    items(filtered.size) { index ->
+                        val entry = filtered[index]
+                        LogItem(
+                            entry = entry,
+                            detailsExpanded = expandedMap[entry.timestamp] == true,
+                            onToggleDetails = {
+                                expandedMap[entry.timestamp] = !(expandedMap[entry.timestamp] ?: false)
+                            },
+                            onCopy = {
+                                val full = buildString {
+                                    append("[${entry.formattedTime}][${entry.level.name}][${entry.tag}] ${entry.message}")
+                                    if (!entry.details.isNullOrBlank()) append("\n${entry.details}")
+                                }
+                                val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                cm.setPrimaryClip(android.content.ClipData.newPlainText("log", full))
+                                Toast.makeText(context, "已复制该条日志", Toast.LENGTH_SHORT).show()
+                            }
+                        )
                     }
                 }
             }
@@ -1182,7 +1317,12 @@ private fun LogViewerSheet(
 }
 
 @Composable
-private fun LogItem(entry: AppLogger.LogEntry) {
+private fun LogItem(
+    entry: AppLogger.LogEntry,
+    detailsExpanded: Boolean,
+    onToggleDetails: () -> Unit,
+    onCopy: () -> Unit
+) {
     val levelColor = when (entry.level) {
         AppLogger.Level.DEBUG -> MaterialTheme.colorScheme.onSurfaceVariant
         AppLogger.Level.INFO -> MaterialTheme.colorScheme.primary
@@ -1200,7 +1340,9 @@ private fun LogItem(entry: AppLogger.LogEntry) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(vertical = 4.dp)
+            // v59：点击卡片复制该条完整日志；有详情时点正文切换展开/收起
+            .clickable(onClick = onCopy),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = LocalCardAlpha.current)),
         shape = RoundedCornerShape(8.dp)
     ) {
@@ -1250,8 +1392,20 @@ private fun LogItem(entry: AppLogger.LogEntry) {
                     text = details,
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                    maxLines = 5,
-                    overflow = TextOverflow.Ellipsis
+                    maxLines = if (detailsExpanded) Int.MAX_VALUE else 5,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.clickable(onClick = onToggleDetails)
+                )
+            }
+
+            // v59：详情被截断时给出可展开提示
+            if (entry.details != null && entry.details.length > 160 && !detailsExpanded) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "点击详情展开…",
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                    modifier = Modifier.clickable(onClick = onToggleDetails)
                 )
             }
         }

@@ -12,12 +12,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import com.open.wuling.util.AppLogger
 import okhttp3.FormBody
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import okhttp3.logging.HttpLoggingInterceptor
 import java.security.MessageDigest
 import java.util.UUID
 import java.util.concurrent.TimeUnit
@@ -27,6 +27,63 @@ private val JSON_MEDIA_TYPE = "application/json; charset=UTF-8".toMediaType()
 
 /** 菱菱邦 hapi OAuth 登录（无需签名，form-urlencoded） */
 private const val LLB_LOGIN_URL = "https://hapi.00bang.cn/llb/oauth/llb/ucenter/login"
+
+/**
+ * v59：接入 AppLogger 的网络日志拦截器（供 WulingAPI / EnergyAPI 共用）。
+ *
+ * 请求（方法+路径+脱敏后请求体）与响应（HTTP 码+脱敏后响应体）写入「我的 → 调试日志」，
+ * release 包同样生效——这是调试日志面板的核心数据源（此前 release 下 HttpLoggingInterceptor
+ * 为 NONE，面板里看不到任何五菱 API 报文）。
+ *
+ * 只记录 URL 路径与报文，不记录请求头（头里集中了 token/签名/设备信息，无需落盘）。
+ */
+internal fun createAppLogInterceptor(): okhttp3.Interceptor {
+    return okhttp3.Interceptor { chain ->
+        val request = chain.request()
+        val path = "${request.method} ${request.url.encodedPath}"
+        try {
+            // 请求体脱敏后入日志（buffered body 可重复读取；API 层全部为 JSON/Form buffered body）
+            val reqBodyText = request.body?.let { body ->
+                runCatching {
+                    val buffer = okio.Buffer()
+                    body.writeTo(buffer)
+                    sanitizeForLog(buffer.readUtf8())
+                }.getOrNull()
+            }
+            AppLogger.apiRequest(path, reqBodyText)
+        } catch (_: Exception) {
+            // 日志绝不影响主流程
+        }
+        val response = chain.proceed(request)
+        try {
+            // peekBody 不消耗响应流，不影响后续 gson.fromJson
+            val respText = response.peekBody(256 * 1024).string()
+            AppLogger.apiResponse(path, response.code, sanitizeForLog(respText))
+        } catch (_: Exception) {
+        }
+        response
+    }
+}
+
+/**
+ * v59：调试日志脱敏。
+ *
+ * 登录/车辆/控制接口的报文里含密码、手机号、token、VIN 等敏感信息，
+ * 落入 AppLogger（会持久化到磁盘并可导出分享）前必须打码：
+ * - password / client_secret / sgmwclientsecret：整值替换为 ******
+ * - access_token / accessToken / token：保留前 6 位，其余 ****
+ * - mobile：保留前 3 后 4
+ * - vin：保留后 4 位
+ */
+private fun sanitizeForLog(raw: String): String {
+    if (raw.isEmpty()) return raw
+    var s = raw
+    s = s.replace(Regex("""("(?:password|client_secret|sgmwclientsecret)"\s*:\s*")[^"]*(")"""), "$1******$2")
+    s = s.replace(Regex("""("(?:access_token|accessToken|saccessToken|token)"\s*:\s*")([^"]{0,6})[^"]*(")"""), "$1$2****$3")
+    s = s.replace(Regex("""("(?:mobile)"\s*:\s*")(\d{3})\d*(\d{4})(")"""), "$1$2****$3$4")
+    s = s.replace(Regex("""("(?:vin)"\s*:\s*")([^"]{0,4})[^"]*(")"""), "$1****$2$3")
+    return s
+}
 
 /**
  * 菱菱邦 OAuth 客户端凭据。
@@ -58,23 +115,13 @@ class WulingAPI @Inject constructor() {
                 chain.proceed(request)
             }
         }
-        .addInterceptor(createLoggingInterceptor())
+        .addInterceptor(createAppLogInterceptor())
         .build()
 
     private val gson = Gson()
 
     // 线程安全的请求锁
     private val requestMutex = Mutex()
-
-    private fun createLoggingInterceptor(): HttpLoggingInterceptor {
-        return HttpLoggingInterceptor().apply {
-            level = if (BuildConfig.DEBUG) {
-                HttpLoggingInterceptor.Level.BODY
-            } else {
-                HttpLoggingInterceptor.Level.NONE
-            }
-        }
-    }
 
     /**
      * V8.2.4+ 新版车控签名（从真身 App v5.42 generateSgmwV824Signature 逆向验证）

@@ -48,6 +48,8 @@ object EnergyAPI {
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS)
+        // v59：接入调试日志（与 WulingAPI 共用拦截器，报文脱敏）
+        .addInterceptor(createAppLogInterceptor())
         .build()
 
     /** 年度视图并行拉取 12 个月 cm 数据用的线程池 */
@@ -395,6 +397,95 @@ object EnergyAPI {
             earliest?.atDay(1) ?: fallback
         } catch (e: Exception) {
             fallback
+        }
+    }
+
+    // ============== 趋势图数据（v54） ==============
+
+    /**
+     * 趋势图上的一个数据点。全部字段可空 —— 缺数据时图上该点留空，不画成 0，
+     * 避免把「没数据」误读成「当天没开」。
+     */
+    data class TrendPoint(
+        val label: String,          // X 轴短标签，如 "08-15" / "3月"
+        val mileage: Double? = null,
+        val elec: Double? = null,
+        val fuel: Double? = null
+    )
+
+    /**
+     * 月度趋势：近 [months] 个月，逐月一个点。
+     *
+     * 数据源为 cm 月度汇总（历史数据完整、字段最全，含里程），并行拉取。
+     * 一次最多 12 个请求；未来月份返回空，自动跳过（不会画成 0）。
+     */
+    fun fetchMonthlyTrend(vin: String, months: Int = 12): List<TrendPoint> {
+        val now = YearMonth.now()
+        val targets = (months - 1 downTo 0).map { now.minusMonths(it.toLong()) }
+
+        val futures = targets.map { ym ->
+            pool.submit(java.util.concurrent.Callable {
+                try {
+                    val body = JSONObject()
+                        .put("vin", vin)
+                        .put("model", DEFAULT_MODEL)
+                        .put("on_year", ym.year.toString())
+                        .put("on_month", ym.monthValue.toString())
+                    records(post("/data_center/ads_use_drive_trip_cm", body)).asMapList().firstOrNull()
+                } catch (e: Exception) {
+                    null
+                }
+            })
+        }
+
+        return futures.mapIndexed { i, f ->
+            val ym = targets[i]
+            val label = "${ym.monthValue}月"
+            val cm = try { f.get() } catch (e: Exception) { null }
+            if (cm == null) {
+                TrendPoint(label)
+            } else {
+                TrendPoint(
+                    label = label,
+                    mileage = cm.dbl("drive_fixed_mileage_cm"),
+                    elec = cm.dbl("use_calculate_soc_consumption_cm"),
+                    fuel = cm.dbl("use_fuel_consumption_cm")
+                )
+            }
+        }
+    }
+
+    /**
+     * 日趋势：指定月份内逐日一个点。
+     *
+     * 数据源为 tds 逐日明细 —— **一次请求即可拿到整月**，效率高。
+     * ⚠️ 实测 tds 只有能耗字段，**不含里程**，所以日趋势的 mileage 恒为 null，
+     *    图上只画能耗曲线。这不是 bug，是数据源本身的限制。
+     */
+    fun fetchDailyTrend(vin: String, yearMonth: YearMonth): List<TrendPoint> {
+        val start = yearMonth.atDay(1)
+        val end = yearMonth.atEndOfMonth()
+
+        val list = try {
+            tdsRecords(vin, start.toString(), end.toString())
+        } catch (e: Exception) {
+            emptyList<JSONObject>()
+        }
+
+        // 按日期归拢，方便查表（接口可能不返回某些日期）
+        val byDate = list.associateBy { it.optString("on_date") }
+
+        return (1..yearMonth.lengthOfMonth()).map { day ->
+            val d = yearMonth.atDay(day)
+            val r = byDate[d.toString()]
+            val elec = r?.dbl("use_calculate_soc_consumption_td")
+            val fuel = r?.dbl("use_fuel_consumption_td")
+            TrendPoint(
+                label = "%02d".format(day),
+                mileage = null,   // tds 无里程字段
+                elec = elec,
+                fuel = fuel
+            )
         }
     }
 }

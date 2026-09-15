@@ -19,6 +19,7 @@ import androidx.core.content.ContextCompat
 import com.open.wuling.MainActivity
 import com.open.wuling.R
 import com.open.wuling.data.local.BleAutoLockPreferences
+import com.open.wuling.util.AppLogger
 import com.open.wuling.util.BleAuthUtils
 import com.open.wuling.util.NativeFreeProtocolUtils
 import com.open.wuling.util.RssiFilter
@@ -63,6 +64,9 @@ class BleAutoLockManager(
 
     fun addLog(message: String) {
         scope.launch {
+            // v59：并轨到统一调试日志（tag=BLE，受 AppLogger 总开关控制，不受本页 BLE 开关影响——
+            //      统一面板里始终能看到蓝牙连接过程；蓝牙钥匙页自己的日志列表行为不变）
+            AppLogger.i("BLE", message)
             if (preferences.logEnabled.first()) {
                 val timestamp = java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.getDefault()).format(java.util.Date())
                 val logMessage = "[$timestamp] $message"
