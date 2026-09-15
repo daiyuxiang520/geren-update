@@ -16,7 +16,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.DoorFront
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lightbulb
@@ -98,45 +97,8 @@ fun DetailScreen(
             }
         } else {
             val status = vehicle.status
-            val info = vehicle.carInfo
-
-            // ====== 车辆信息 ======
-            DetailSectionHeader(icon = Icons.Filled.DirectionsCar, title = "车辆信息", color = MaterialTheme.colorScheme.primary)
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = LocalCardAlpha.current)),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    if (info != null) {
-                        DetailRow("车型", FormatUtils.safeString(info.carTypeName.ifEmpty { vehicle.name }))
-                        DetailRow("型号", FormatUtils.safeString(info.model.ifEmpty { vehicle.model }))
-                        DetailRow("配置", FormatUtils.safeString(info.seriesCode))
-                        DetailRow("VIN", FormatUtils.safeString(info.vin.ifEmpty { vehicle.vin }))
-                        DetailRow("车牌", FormatUtils.safeString(info.carPlate.ifEmpty { vehicle.licensePlate }))
-                        DetailRow("颜色", FormatUtils.safeString(info.colorName.ifEmpty { info.colorCode }))
-                        DetailRow("年份", FormatUtils.safeString(info.carYear))
-                        DetailRow("VSN", FormatUtils.safeString(info.vsn))
-                        DetailRow("等级", FormatUtils.safeString(info.level))
-                        DetailRow("动力类型", FormatUtils.getPowerTypeDisplay(vehicle))
-                        DetailRow("供应商", FormatUtils.safeString(info.providerCode))
-                        DetailRow("购买人", FormatUtils.safeString(info.purchaseUserName))
-                        DetailRow("购买店号", FormatUtils.safeString(info.purchaseShopNum))
-                        DetailRow("购车日期", FormatUtils.formatDate(info.purchaseDate))
-                        DetailRow("绑定手机", FormatUtils.safeString(info.bindCarUserMobile))
-                        DetailRow("绑定状态", if (info.finishBind) "已绑定" else "未绑定")
-                        DetailRow("蓝牙钥匙", FormatUtils.safeString(info.bluetoothKeyConnectMark))
-                        DetailRow("摇晃解锁", if (info.shakeLock == 1) "开启" else "关闭")
-                    } else {
-                        DetailRow("车型", FormatUtils.safeString(vehicle.name))
-                        DetailRow("型号", FormatUtils.safeString(vehicle.model))
-                        DetailRow("车牌", FormatUtils.safeString(vehicle.licensePlate))
-                        DetailRow("VIN", FormatUtils.safeString(vehicle.vin))
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
+            // 注：车辆静态信息（车型/VIN/配置等）已统一收敛到「我的」页点击车辆卡查看，
+            // 本页专注展示实时状态，不再重复渲染静态档案。
 
             // ====== 电池 & 电量 ======
             DetailSectionHeader(icon = Icons.Filled.BatteryChargingFull, title = "电池与充电", color = PrimaryGreen)

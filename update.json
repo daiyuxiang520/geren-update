@@ -1,8 +1,8 @@
 {
-  "versionCode": 47,
-  "versionName": "3.44.0-android16",
-  "updateLog": "v47 (3.44.0) 更新内容：\n1. 「我的」页「消息通知」设置项已实现：查看通知权限与通知渠道状态、一键跳转系统设置、重新检测\n2. 「我的」页「隐私设置」设置项已实现：隐私政策全文查看、权限授权状态管理、本机缓存数据清理\n3. 隐私政策文本统一为公共常量，首启同意门与隐私设置页共用同一份文案\n4. 权限状态支持实时检测（通知/蓝牙/定位）",
+  "versionCode": 48,
+  "versionName": "3.45.0-android16",
+  "updateLog": "v48 (3.45.0) 更新内容：\n1. 「详情」页移除「车辆信息」区块，页面专注实时状态展示\n2. 车辆静态信息（车型/型号/配置/VIN/车牌/颜色/年份/VSN/等级/动力类型/供应商/购买信息/绑定状态/蓝牙钥匙/摇晃解锁）统一在「我的」页点击车辆卡查看\n3. 「详情」页开屏即展示电池与充电，浏览实时状态更直接",
   "apkUrl": "https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "265d5ee88970d6089f0288b65b342484"
+  "md5": "e4e6cdf71467c76f5e76524c8b4c0d50"
 }
