@@ -473,39 +473,29 @@ private fun QuickControlSection(
     onCommand: (ControlCommand) -> Unit
 ) {
     Column {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "快捷控制",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(modifier = Modifier.weight(1f))
-            // v53：状态行补上「车窗」。只表达"有没有窗没关"这一个用户真正关心的信息 ——
-            //      四窗状态全展开塞不进这行（它只有约 1/3 宽度），而且全关是默认态、无需报告。
-            //      未关时同步转为橙色，做成一个"需要你注意"的视觉信号。
-            // v56：再补上「上电/下电」。车已上电 = 有人在场/车在通电，是锁车前最该确认的一环；
-            //      放在最前面，与顶部大卡片圆点、详情页整机状态呼应。
-            Text(
-                text = buildString {
-                    append("车辆状态：")
-                    append(if (isPowerOn) "上电" else "下电")
-                    append(" · ")
-                    append(if (isLocked) "已锁" else "未锁")
-                    append(" · ")
-                    append(if (isClimateOn) "空调开启" else "空调关闭")
-                    append(" · ")
-                    append(if (windowsOpen) "车窗未关" else "车窗全关")
-                },
-                fontSize = 13.sp,
-                // 车窗未关 = 潜在风险（淋雨／被盗），用告警色；其余保持弱化文字色
-                color = if (windowsOpen) PrimaryOrange else MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = if (windowsOpen) FontWeight.Medium else FontWeight.Normal
-            )
-        }
+        // v57：去掉「快捷控制」标题。原状态行被挤在标题右侧约 1/3 宽度里，四个维度必然折行，
+        //      折了之后「车窗全关」还会被劈成两行。去掉标题后状态行独占整行，不再折行。
+        //      这一组按钮的用途（解锁/空调/寻车…）本身已由图标+文字自解释，标题属于冗余。
+        //
+        // v53：状态行含「车窗」，未关时转橙 —— 只表达"有没有窗没关"这一个用户真正关心的信息，
+        //      四窗状态全展开塞不下，且全关是默认态、无需报告。
+        // v56：补上「上电/下电」。车已上电 = 有人在场/车在通电，是锁车前最该确认的一环，放在最前。
+        Text(
+            text = buildString {
+                append("车辆状态：")
+                append(if (isPowerOn) "上电" else "下电")
+                append(" · ")
+                append(if (isLocked) "已锁" else "未锁")
+                append(" · ")
+                append(if (isClimateOn) "空调开启" else "空调关闭")
+                append(" · ")
+                append(if (windowsOpen) "车窗未关" else "车窗全关")
+            },
+            fontSize = 13.sp,
+            // 车窗未关 = 潜在风险（淋雨／被盗），用告警色；其余保持弱化文字色
+            color = if (windowsOpen) PrimaryOrange else MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = if (windowsOpen) FontWeight.Medium else FontWeight.Normal
+        )
         Spacer(modifier = Modifier.height(12.dp))
 
         // 第一行：解锁、空调、寻车、启动
