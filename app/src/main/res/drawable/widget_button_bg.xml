@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 小组件快捷控制按钮背景（浅灰圆角，保证在深浅两种桌面上都可辨识） -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#F1F3F5" />
+    <corners android:radius="8dp" />
+</shape>

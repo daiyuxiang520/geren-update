@@ -538,7 +538,8 @@ fun MainScreen(
                     modifier = Modifier.padding(paddingValues),
                     vehicle = selectedVehicle,
                     onRefresh = { appState.refreshVehicleStatus() },
-                    onQuickRefresh = { appState.refreshVehicleStatus(isQuick = true, showLoading = false) }
+                    onQuickRefresh = { appState.refreshVehicleStatus(isQuick = true, showLoading = false) },
+                    onCommand = { command -> appState.executeCommand(command) }
                 )
                 2 -> LocationScreen(
                     modifier = Modifier.padding(paddingValues),

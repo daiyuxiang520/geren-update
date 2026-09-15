@@ -520,6 +520,9 @@ class AppState @Inject constructor(
 
                 // 「离车提醒」检测（车窗未关/车门未锁/后备箱未关 → 系统通知；恢复自动撤回）（v61）
                 com.open.wuling.util.VehicleAlertManager.onStatusRefreshed(finalVehicle)
+
+                // v63：停车记录——本地观测式记录，同一位置只续期、移动过才新增
+                com.open.wuling.data.local.ParkingHistoryStore.record(context, finalVehicle)
             }.onFailure { error ->
                 _errorMessage.value = error.message
             }

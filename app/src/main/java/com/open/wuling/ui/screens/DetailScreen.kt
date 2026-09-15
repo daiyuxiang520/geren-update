@@ -26,6 +26,9 @@ import androidx.compose.material.icons.filled.TireRepair
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
@@ -41,6 +44,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.open.wuling.data.model.ControlCommand
 import com.open.wuling.data.model.Vehicle
 import com.open.wuling.ui.components.CollectTimeText
 import com.open.wuling.ui.theme.*
@@ -52,7 +56,9 @@ fun DetailScreen(
     modifier: Modifier = Modifier,
     vehicle: Vehicle?,
     onRefresh: () -> Unit = {},
-    onQuickRefresh: () -> Unit = {}
+    onQuickRefresh: () -> Unit = {},
+    // v63：提醒条上的「立即锁车 / 一键关窗」走这里（由 MainActivity 转交 AppState）
+    onCommand: (ControlCommand) -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
 
@@ -124,7 +130,7 @@ fun DetailScreen(
                             modifier = Modifier.size(22.dp)
                         )
                         Spacer(modifier = Modifier.width(10.dp))
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "离车前请注意",
                                 fontSize = 14.sp,
@@ -138,6 +144,34 @@ fun DetailScreen(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                         }
+                    }
+
+                    // v63：能远程处理的问题直接在提醒条上给按钮（与通知 Action 同一套能力）
+                    val hasUnlocked = safetyAlerts.any { it.contains("车门未锁") }
+                    val hasWindowOpen = safetyAlerts.any { it.contains("车窗未关") }
+                    if (hasUnlocked || hasWindowOpen) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            if (hasUnlocked) {
+                                AlertActionButton(
+                                    text = "立即锁车",
+                                    modifier = Modifier.weight(1f),
+                                    onClick = { onCommand(ControlCommand.LOCK) }
+                                )
+                            }
+                            if (hasWindowOpen) {
+                                AlertActionButton(
+                                    text = "一键关窗",
+                                    modifier = Modifier.weight(1f),
+                                    onClick = { onCommand(ControlCommand.WINDOW_CLOSE) }
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
                     }
                 }
                 Spacer(modifier = Modifier.height(12.dp))
@@ -374,6 +408,36 @@ fun DetailScreen(
 
             Spacer(modifier = Modifier.height(100.dp))
         }
+    }
+}
+
+/**
+ * 提醒条上的操作按钮（v63）。
+ * 用实心橙底：提醒条本身就是橙色警示区，按钮要与「可点击」的语义区分开，
+ * 不能做成低调的描边样式让人以为只是文字说明。
+ */
+@Composable
+private fun AlertActionButton(
+    text: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier.height(36.dp),
+        shape = RoundedCornerShape(10.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = PrimaryOrange,
+            contentColor = Color.White
+        ),
+        contentPadding = PaddingValues(horizontal = 8.dp)
+    ) {
+        Text(
+            text = text,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1
+        )
     }
 }
 

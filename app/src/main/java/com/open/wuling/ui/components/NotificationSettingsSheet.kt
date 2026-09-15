@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -214,6 +215,60 @@ fun NotificationSettingsSheet(
                     lineHeight = 18.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+
+            Spacer(Modifier.height(20.dp))
+
+            // ===== 充电与电量提醒（v63）=====
+            // 与离车提醒共用一套「边沿触发 + 指纹防重复」机制：只在状态跳变时提醒，
+            // 稳态期间（一直在充、一直低电量）不会反复弹。
+            val alertCharge by alertPrefs.chargeFlow.collectAsState(initial = true)
+            val alertLowBattery by alertPrefs.lowBatteryFlow.collectAsState(initial = true)
+            val lowThreshold by alertPrefs.lowBatteryThresholdFlow.collectAsState(initial = 20)
+
+            Text(
+                text = "充电与电量",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(Modifier.height(8.dp))
+
+            AlertSwitchRow(
+                title = "充电提醒",
+                desc = "开始充电 / 已充满（${com.open.wuling.data.local.VehicleAlertPreferences.FULL_BATTERY_THRESHOLD}%）/ 充电中断时提醒",
+                checked = alertCharge,
+                onChange = { alertPrefs.setCharge(it) }
+            )
+            AlertSwitchRow(
+                title = "低电量提醒",
+                desc = "电量跌破阈值时提醒一次，回升后再跌破才会重发",
+                checked = alertLowBattery,
+                onChange = { alertPrefs.setLowBattery(it) }
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "低电量阈值",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f)
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    com.open.wuling.data.local.VehicleAlertPreferences.LOW_BATTERY_OPTIONS.forEach { v ->
+                        FilterChip(
+                            selected = lowThreshold == v,
+                            onClick = { alertPrefs.setLowBatteryThreshold(v) },
+                            enabled = alertLowBattery,
+                            label = { Text("$v%", fontSize = 12.sp) }
+                        )
+                    }
+                }
             }
 
             Spacer(Modifier.height(20.dp))

@@ -142,6 +142,15 @@ fun LocationScreen(
     }
     val activeCoord = displayLocation?.let { it.latitude to it.longitude } ?: lastValidCoord
 
+    // v63：停车记录（本地存储）。进入页面时读一次即可——写入发生在 AppState 每次状态刷新，
+    //      用户从别的 Tab 切回来就能看到最新记录，无需在本页做定时轮询。
+    var parkingPoints by remember {
+        mutableStateOf(emptyList<com.open.wuling.data.local.ParkingHistoryStore.Point>())
+    }
+    LaunchedEffect(Unit) {
+        parkingPoints = com.open.wuling.data.local.ParkingHistoryStore.load(context)
+    }
+
     // ===== 地址 + 天气：单协程串行解析（v33 重构）=====
     //
     // 背景：v31/v32 中地址与天气各用一个 LaunchedEffect（key 相同），30 秒车辆刷新时
@@ -761,17 +770,7 @@ fun LocationScreen(
             // 导航找车按钮（使用纠偏后的坐标，dev=0 表示传入 GCJ-02 坐标）
             Button(
                 onClick = {
-                    displayLocation?.let { loc ->
-                        val uri = Uri.parse("androidamap://route?sourceApplication=五菱智驾&slat=&slon=&sname=我的位置&dlat=${loc.latitude}&dlon=${loc.longitude}&dname=车辆位置&dev=0&t=2")
-                        val intent = Intent(Intent.ACTION_VIEW, uri)
-                        intent.setPackage("com.autonavi.minimap")
-                        if (intent.resolveActivity(context.packageManager) != null) {
-                            context.startActivity(intent)
-                        } else {
-                            val webUri = Uri.parse("https://uri.amap.com/navigation?to=${loc.longitude},${loc.latitude},车辆位置&mode=car&src=车上")
-                            context.startActivity(Intent(Intent.ACTION_VIEW, webUri))
-                        }
-                    }
+                    displayLocation?.let { loc -> navigateTo(context, loc.latitude, loc.longitude) }
                 },
                 modifier = Modifier.weight(1f),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
@@ -819,6 +818,20 @@ fun LocationScreen(
                 Text(text = "分享位置")
             }
         }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // ===== 停车记录（v63）=====
+        //
+        // 官方网关没有行程接口，这里是本地观测式记录：车辆在同一个地方停留会合并成一条，
+        // 移动过（>50m）才新增。存的是原始 WGS84 坐标，导航前统一纠偏。
+        ParkingHistoryCard(
+            points = parkingPoints,
+            onNavigate = { lat, lon ->
+                val (cLat, cLon) = CoordConverter.convert(context, lat, lon)
+                navigateTo(context, cLat, cLon)
+            }
+        )
 
         // v50：原先这里的「坐标纠偏」开关卡片已移除 —— 纠偏改为恒定开启，
         //      界面上不再暴露开关。少掉约 76dp 高度，滚动距离同步缩短。
@@ -925,6 +938,123 @@ private fun LocationInfoItem(label: String, value: String) {
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurface
         )
+    }
+}
+
+/**
+ * 调起导航到指定坐标（坐标需已纠偏为 GCJ-02，dev=0）。
+ * 高德 App 优先，未安装则回退高德网页版。
+ */
+private fun navigateTo(context: android.content.Context, lat: Double, lon: Double) {
+    val uri = Uri.parse(
+        "androidamap://route?sourceApplication=五菱智驾&slat=&slon=&sname=我的位置" +
+            "&dlat=$lat&dlon=$lon&dname=车辆位置&dev=0&t=2"
+    )
+    val intent = Intent(Intent.ACTION_VIEW, uri).apply { setPackage("com.autonavi.minimap") }
+    if (intent.resolveActivity(context.packageManager) != null) {
+        context.startActivity(intent)
+    } else {
+        val webUri = Uri.parse("https://uri.amap.com/navigation?to=$lon,$lat,车辆位置&mode=car&src=车上")
+        context.startActivity(Intent(Intent.ACTION_VIEW, webUri))
+    }
+}
+
+/** 停车记录卡片（v63）：最近 8 条，点右侧「导航」可直接过去 */
+@Composable
+private fun ParkingHistoryCard(
+    points: List<com.open.wuling.data.local.ParkingHistoryStore.Point>,
+    onNavigate: (Double, Double) -> Unit
+) {
+    if (points.isEmpty()) return
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = LocalCardAlpha.current)
+        ),
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Filled.MyLocation,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = "停车记录",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "本地记录：同一地点（50 米内）合并为一条，车辆移动后新增",
+                fontSize = 11.sp,
+                lineHeight = 15.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            points.take(8).forEachIndexed { index, p ->
+                if (index > 0) {
+                    Divider(
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f),
+                        thickness = 1.dp
+                    )
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "${formatParkingTime(p.firstSeen)} · ${formatStayDuration(p)}",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = String.format(Locale.US, "%.4f, %.4f", p.lat, p.lon),
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    TextButton(onClick = { onNavigate(p.lat, p.lon) }) {
+                        Text("导航", fontSize = 12.sp)
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun formatParkingTime(epochMs: Long): String = try {
+    java.text.SimpleDateFormat("MM-dd HH:mm", Locale.US).format(java.util.Date(epochMs))
+} catch (_: Exception) {
+    "--"
+}
+
+private fun formatStayDuration(p: com.open.wuling.data.local.ParkingHistoryStore.Point): String {
+    val ms = p.lastSeen - p.firstSeen
+    if (ms < 60_000) return "途经"
+    val minutes = ms / 60_000
+    return when {
+        minutes < 60 -> "停留 ${minutes} 分钟"
+        minutes < 1440 -> {
+            val h = minutes / 60
+            val m = minutes % 60
+            if (m > 0) "停留 ${h} 小时 ${m} 分" else "停留 ${h} 小时"
+        }
+        else -> "停留 ${minutes / 1440} 天"
     }
 }
 

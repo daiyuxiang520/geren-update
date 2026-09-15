@@ -164,6 +164,12 @@
             </intent-filter>
         </receiver>
 
+        <!-- v63：后台车控指令执行器（通知 Action + 桌面小组件按钮） -->
+        <receiver
+            android:name="com.open.wuling.receiver.VehicleActionReceiver"
+            android:enabled="true"
+            android:exported="false" />
+
     </application>
 
 </manifest>

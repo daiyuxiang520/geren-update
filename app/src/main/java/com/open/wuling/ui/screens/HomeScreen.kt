@@ -472,6 +472,22 @@ private fun QuickControlSection(
     isPowerOn: Boolean,
     onCommand: (ControlCommand) -> Unit
 ) {
+    // v63：敏感操作二次确认。
+    // 解锁 / 开窗 / 启动 / 开尾门 都是「把车打开」的动作，误触代价高（口袋里顶到、
+    // 小孩拿手机乱点），且车不在视线范围内时执行后又无法目视确认，所以先弹确认。
+    // 反向操作（锁车、关窗）与安全提醒类（寻车、空调）保持一点即执行。
+    var pendingCommand by remember { mutableStateOf<ControlCommand?>(null) }
+
+    fun request(cmd: ControlCommand) {
+        if (cmd == ControlCommand.UNLOCK || cmd == ControlCommand.WINDOW_OPEN ||
+            cmd == ControlCommand.IGNITION || cmd == ControlCommand.TRUNK
+        ) {
+            pendingCommand = cmd
+        } else {
+            onCommand(cmd)
+        }
+    }
+
     Column {
         // v57：去掉「快捷控制」标题。原状态行被挤在标题右侧约 1/3 宽度里，四个维度必然折行，
         //      折了之后「车窗全关」还会被劈成两行。去掉标题后状态行独占整行，不再折行。
@@ -508,7 +524,7 @@ private fun QuickControlSection(
                 icon = if (isLocked) Icons.Filled.Lock else Icons.Filled.LockOpen,
                 label = if (isLocked) "解锁" else "锁车",
                 tint = if (isLocked) PrimaryGreen else PrimaryOrange,
-                onClick = { onCommand(if (isLocked) ControlCommand.UNLOCK else ControlCommand.LOCK) }
+                onClick = { request(if (isLocked) ControlCommand.UNLOCK else ControlCommand.LOCK) }
             )
             QuickButton(
                 modifier = Modifier.weight(1f),
@@ -532,7 +548,7 @@ private fun QuickControlSection(
                 //      说明：底层仍走同一个 IGNITION 授权指令（远程启动/授权点火），文案随状态走。
                 label = if (isPowerOn) "已上电" else "启动",
                 tint = if (isPowerOn) BatteryGreen else MaterialTheme.colorScheme.primary,
-                onClick = { onCommand(ControlCommand.IGNITION) }
+                onClick = { request(ControlCommand.IGNITION) }
             )
         }
         Spacer(modifier = Modifier.height(10.dp))
@@ -546,7 +562,7 @@ private fun QuickControlSection(
                 icon = Icons.Filled.VerticalShadesClosed,
                 label = "开窗",
                 tint = MaterialTheme.colorScheme.primary,
-                onClick = { onCommand(ControlCommand.WINDOW_OPEN) }
+                onClick = { request(ControlCommand.WINDOW_OPEN) }
             )
             QuickButton(
                 modifier = Modifier.weight(1f),
@@ -567,10 +583,54 @@ private fun QuickControlSection(
                 icon = Icons.Filled.DirectionsCar,
                 label = "尾门锁",
                 tint = MaterialTheme.colorScheme.primary,
-                onClick = { onCommand(ControlCommand.TRUNK) }
+                onClick = { request(ControlCommand.TRUNK) }
             )
         }
     }
+
+    // 二次确认对话框
+    pendingCommand?.let { cmd ->
+        AlertDialog(
+            onDismissRequest = { pendingCommand = null },
+            title = {
+                Text(
+                    text = "确认${cmd.displayName}？",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 17.sp
+                )
+            },
+            text = {
+                Text(
+                    text = confirmMessageFor(cmd),
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onCommand(cmd)
+                    pendingCommand = null
+                }) {
+                    Text("确认执行", color = PrimaryOrange, fontWeight = FontWeight.SemiBold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingCommand = null }) {
+                    Text("取消", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        )
+    }
+}
+
+/** 敏感操作的确认说明：讲清「会打开什么 + 风险是什么」，而不是干巴巴一句「确定吗？」 */
+private fun confirmMessageFor(cmd: ControlCommand): String = when (cmd) {
+    ControlCommand.UNLOCK -> "解锁后车门可自由开启。请确认车辆在您视线范围内，不要在陌生环境误解锁。"
+    ControlCommand.WINDOW_OPEN -> "开窗后若遇降雨或无人看管，存在进水与失窃风险。要关窗请点「关窗」。"
+    ControlCommand.IGNITION -> "远程启动/授权点火前，请确认车辆处于安全环境且档位在 P 挡。"
+    ControlCommand.TRUNK -> "开启尾门后车厢处于开放状态，请确认车辆周围安全。"
+    else -> "该操作会远程控制车辆，确认执行？"
 }
 
 @Composable
