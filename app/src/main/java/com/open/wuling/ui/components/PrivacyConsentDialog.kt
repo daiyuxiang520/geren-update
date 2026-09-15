@@ -97,7 +97,7 @@ fun PrivacyConsentDialog(
                         .verticalScroll(rememberScrollState())
                 ) {
                     Text(
-                        text = PRIVACY_TEXT,
+                        text = PRIVACY_POLICY_TEXT,
                         fontSize = 13.sp,
                         lineHeight = 20.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -129,28 +129,3 @@ fun PrivacyConsentDialog(
         }
     }
 }
-
-private const val PRIVACY_TEXT = """欢迎使用「五菱车控」。
-
-为保障你的知情权，请在开始使用前阅读以下说明：
-
-一、我们收集哪些信息
-1. 设备信息：设备型号、系统版本、应用版本号，用于兼容性适配与统计分析。
-2. 账号信息：你主动填写的手机号与登录凭证，仅保存在本机与官方服务端，用于车辆远程控制。
-3. 车辆信息：你绑定车辆的 VIN、车型与状态数据，用于展示与控制。
-4. 运行日志：应用运行中的错误与调试日志，用于问题排查。
-
-二、我们如何使用这些信息
-1. 提供车辆状态查询、远程控制、蓝牙无感控车等核心功能。
-2. 通过第三方统计服务（友盟+ U-App）进行匿名的安装量、版本分布与崩溃分析，以改进产品质量。
-
-三、第三方 SDK 说明
-本应用集成了友盟+ 移动统计 SDK（U-App），用于匿名统计与崩溃上报。在你点击「同意并继续」之前，该 SDK 不会初始化、不会采集任何信息。
-
-四、你的权利
-你可以随时在「我的」页面退出登录以清除本机凭证；卸载应用即可清除本机全部数据。
-
-五、特别说明
-本应用为个人学习与自用项目，非官方应用。车辆控制存在网络与设备限制，请以官方 App 为准。
-
-点击「同意并继续」即表示你已阅读并同意上述内容。"""

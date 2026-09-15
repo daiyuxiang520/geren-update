@@ -99,7 +99,9 @@ import com.open.wuling.ui.theme.PrimaryGreen
 import com.open.wuling.ui.theme.PrimaryOrange
 import com.open.wuling.ui.theme.PrimaryRed
 import com.open.wuling.ui.components.DetailRow
+import com.open.wuling.ui.components.NotificationSettingsSheet
 import com.open.wuling.ui.components.OemKeepAliveSheet
+import com.open.wuling.ui.components.PrivacySettingsSheet
 import com.open.wuling.ui.theme.LocalCardAlpha
 import com.open.wuling.util.FormatUtils
 
@@ -122,6 +124,8 @@ fun ProfileScreen(
     var showLogDialog by remember { mutableStateOf(false) }
     var showThemeSettings by remember { mutableStateOf(false) }
     var showKeepAliveSheet by remember { mutableStateOf(false) }
+    var showNotificationSheet by remember { mutableStateOf(false) }
+    var showPrivacySheet by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
     var showVehicleInfo by remember { mutableStateOf(false) }
     var tokenInput by remember { mutableStateOf("") }
@@ -349,9 +353,9 @@ fun ProfileScreen(
                 SettingsItem(
                     icon = Icons.Filled.Notifications,
                     title = "消息通知",
-                    subtitle = "推送和提醒设置",
+                    subtitle = "权限与通知渠道管理",
                     iconColor = PrimaryOrange,
-                    onClick = { }
+                    onClick = { showNotificationSheet = true }
                 )
 
                 Divider(color = MaterialTheme.colorScheme.surfaceVariant)
@@ -359,9 +363,9 @@ fun ProfileScreen(
                 SettingsItem(
                     icon = Icons.Filled.Shield,
                     title = "隐私设置",
-                    subtitle = "权限和数据管理",
+                    subtitle = "隐私政策与权限数据管理",
                     iconColor = PrimaryGreen,
-                    onClick = { }
+                    onClick = { showPrivacySheet = true }
                 )
 
                 Divider(color = MaterialTheme.colorScheme.surfaceVariant)
@@ -756,6 +760,26 @@ fun ProfileScreen(
     if (showVehicleInfo) {
         VehicleInfoDialog(vehicle = selectedVehicle, onDismiss = { showVehicleInfo = false })
     }
+
+    // 消息通知设置（权限状态 + 通知渠道 + 跳转系统设置）
+    NotificationSettingsSheet(
+        isOpen = showNotificationSheet,
+        onClose = { showNotificationSheet = false }
+    )
+
+    // 隐私设置（隐私政策全文 + 权限管理 + 本地数据清理）
+    PrivacySettingsSheet(
+        isOpen = showPrivacySheet,
+        onClose = { showPrivacySheet = false },
+        onClearLogs = {
+            AppLogger.clear()
+            // 清理更新安装包缓存（updates 目录）
+            runCatching {
+                java.io.File(context.cacheDir, "updates").deleteRecursively()
+            }
+            Toast.makeText(context, "已清除本机缓存数据", Toast.LENGTH_SHORT).show()
+        }
+    )
 }
 
 /**
