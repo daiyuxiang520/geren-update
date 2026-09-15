@@ -38,6 +38,14 @@ import androidx.lifecycle.LifecycleEventObserver
  *    WebView 只收到 DOWN 收不到 MOVE，导致「地图不动、页面在滚」。
  *    与其两边抢，不如让小地图彻底不参与手势：页面滑动一路顺畅，
  *    要看/要操作地图就点「全屏」进独立页面（那里没有父级滚动容器，手势完整）。
+ * @param use3D 是否使用 3D 视图（v51 新增）。
+ *  - 全屏地图与位置页预览小图均已开启（v52 起预览图也上 3D）。
+ *  - 3D 依赖 WebGL，部分老旧车机 WebView 不满足条件。高德官方说明此时**自动回落 2D**，
+ *    我们额外在 JS 侧探测 WebGL，不可用时直接按 2D 初始化，避免出现空白地图。
+ * @param pitch3D 3D 俯仰角（0-83）。
+ *  - 全屏地图用默认 50：视野开阔、楼块立体感强，且用户可自行转动调整。
+ *  - 预览小图建议调小（如 35）：尺寸只有一两百 dp，俯仰角过大会让楼块挤压、
+ *    画面发糊，透视太强反而看不出车在哪。
  */
 fun AmapView(
     longitude: Double,
@@ -46,7 +54,9 @@ fun AmapView(
     zoomLevel: Int = 16,
     showMarker: Boolean = true,
     interactive: Boolean = true,
-    key: String = ""
+    key: String = "",
+    use3D: Boolean = false,
+    pitch3D: Int = 50
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -111,7 +121,7 @@ fun AmapView(
     }
 
     // 更新地图内容
-    DisposableEffect(longitude, latitude, zoomLevel, showMarker, interactive, key) {
+    DisposableEffect(longitude, latitude, zoomLevel, showMarker, interactive, key, use3D, pitch3D) {
         isLoading = true
 
         if (key.isNotEmpty()) {
@@ -129,11 +139,37 @@ fun AmapView(
                 <body>
                     <div id="container"></div>
                     <script>
+                        // ===== 3D 能力探测（v51）=====
+                        // 3D 视图走 WebGL 渲染，部分老旧车机 WebView / GPU 驱动不满足条件。
+                        // 高德官方说明此时「仍然使用原有 2D 视图绘制」，但我们还额外自己探一次：
+                        // 拿不到 WebGL 上下文就**根本不传 3D 参数**，省掉一次无谓的 3D 初始化，
+                        // 也避免个别机型在回落过程中闪一下白图。
+                        function supportsWebGL() {
+                            try {
+                                var canvas = document.createElement('canvas');
+                                var gl = canvas.getContext('webgl') ||
+                                         canvas.getContext('experimental-webgl');
+                                if (!gl) return false;
+                                // 部分车机有上下文但无实际渲染能力，再确认一个基础参数
+                                var ok = !!gl.getParameter(gl.VERSION);
+                                var lose = gl.getExtension('WEBGL_lose_context');
+                                if (lose) lose.loseContext();  // 探测完及时释放，不占 GPU 资源
+                                return ok;
+                            } catch (e) {
+                                return false;
+                            }
+                        }
+
+                        var want3D = $use3D;
+                        var can3D = want3D && supportsWebGL();
+                        // 探测结果挂到全局，供 Android 侧通过 evaluateJavascript 读取（排查用）
+                        window.__wulingMap3D = can3D ? 1 : 0;
+
                         if (typeof AMap !== 'undefined') {
-                            var map = new AMap.Map('container', {
+                            var mapOptions = {
                                 zoom: $zoomLevel,
                                 center: [$longitude, $latitude],
-                                viewMode: '2D',
+                                viewMode: can3D ? '3D' : '2D',
                                 // interactive=false → 静态预览：地图完全不响应手势，
                                 // 触摸事件不会被 WebView 吃掉，页面可一路顺畅滑动。
                                 dragEnable: $interactive,
@@ -141,12 +177,33 @@ fun AmapView(
                                 scrollWheel: $interactive,
                                 doubleClickZoom: $interactive,
                                 touchZoom: $interactive,
-                                keyboardEnable: $interactive
-                            });
+                                keyboardEnable: $interactive,
+                                // 3D 专属：俯仰角 + 旋转/倾斜手势（2D 下这些参数被高德忽略）
+                                // 旋转/倾斜交互仅在可交互时开启；静态预览图只保留俯仰立体感。
+                                pitch: can3D ? $pitch3D : 0,
+                                rotation: 0,
+                                rotateEnable: can3D && $interactive,
+                                pitchEnable: can3D && $interactive,
+                                showBuildingBlock: can3D,   // 3D 楼块，城市立体感的主要来源
+                                buildingAnimation: can3D    // 楼块生长动画
+                            };
+                            var map = new AMap.Map('container', mapOptions);
 
-                            AMap.plugin(['AMap.ToolBar', 'AMap.Marker'], function() {
+                            AMap.plugin(['AMap.ToolBar', 'AMap.Marker', 'AMap.ControlBar'], function() {
                                 // 缩放工具条只在可交互时才有意义（小地图禁用缩放，按钮会失效）
                                 ${if (interactive) "map.addControl(new AMap.ToolBar({ position: 'RB' }));" else ""}
+
+                                // v51：3D 全屏地图加罗盘控制盘 —— 否则用户根本不知道地图可以转。
+                                // ControlBar 提供旋转/倾斜控制，只在 3D 且可交互时挂载。
+                                ${if (interactive) """
+                                if (can3D) {
+                                    map.addControl(new AMap.ControlBar({
+                                        position: { right: '10px', top: '80px' },
+                                        showZoomBar: false,
+                                        showControlButton: true
+                                    }));
+                                }
+                                """ else ""}
 
                                 ${if (showMarker) """
                                 var marker = new AMap.Marker({

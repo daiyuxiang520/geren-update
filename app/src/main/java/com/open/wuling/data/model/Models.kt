@@ -198,6 +198,24 @@ data class WindowStatus(
     val rearRight: Boolean = false
 )
 
+/**
+ * 任一车窗是否未关（v53 首页状态行用）。
+ *
+ * ⚠️ 不只看 [WindowStatus] 的布尔位，还并联判断四个开度：
+ *    实测 windowXStatus 与 windowXOpenDegree 会不同步（布尔位为 0 但开度仍有值），
+ *    两个信号取"或"，任一提示"没关"就按未关处理 —— 漏报（以为关了其实没关）
+ *    比误报更危险，所以这里选择更保守的一侧。
+ */
+fun WindowStatus.hasAnyOpen(
+    degree1: Int = 0,
+    degree2: Int = 0,
+    degree3: Int = 0,
+    degree4: Int = 0
+): Boolean {
+    return frontLeft || frontRight || rearLeft || rearRight ||
+        degree1 > 0 || degree2 > 0 || degree3 > 0 || degree4 > 0
+}
+
 // ============== VehicleLocation ==============
 data class VehicleLocation(
     val latitude: Double,

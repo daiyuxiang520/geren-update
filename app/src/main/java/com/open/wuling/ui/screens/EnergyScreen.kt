@@ -58,6 +58,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.open.wuling.data.api.EnergyAPI
 import com.open.wuling.data.model.Vehicle
+import com.open.wuling.ui.components.EnergyPieChart
+import com.open.wuling.ui.components.EnergyTrendChart
+import com.open.wuling.ui.components.EnergyTrendLine
 import com.open.wuling.ui.theme.LocalCardAlpha
 import com.open.wuling.ui.theme.PrimaryOrange
 import com.open.wuling.ui.theme.PrimaryRed
@@ -96,6 +99,20 @@ fun EnergyScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var stats by remember { mutableStateOf<EnergyAPI.EnergyStats?>(null) }
 
+    // ===== 趋势图（v54）=====
+    // 与汇总卡片各自独立加载：图表请求失败不该把上面的汇总数字一起拖垮，
+    // 因此单独持有一份 loading / error，互不干扰。
+    var trendLoading by remember { mutableStateOf(false) }
+    var trendError by remember { mutableStateOf<String?>(null) }
+    var trendPoints by remember { mutableStateOf<List<EnergyAPI.TrendPoint>>(emptyList()) }
+    // 趋势图指标：0=能耗 1=里程
+    var trendMetric by remember { mutableIntStateOf(0) }
+    // v55：被点击选中的柱子（null = 未选中），用于弹详情浮层
+    var selectedTrendIndex by remember { mutableStateOf<Int?>(null) }
+    // 弹层里展示的明细（点柱子后才去拿，避免每次加载都多打请求）
+    var detailStats by remember { mutableStateOf<EnergyAPI.EnergyStats?>(null) }
+    var detailLoading by remember { mutableStateOf(false) }
+
     // 日期选择器对话框
     var showPicker by remember { mutableStateOf(false) }
     // 可选下限：车机最早有能耗记录的日期（默认兜底 2024-01-01）
@@ -125,6 +142,90 @@ fun EnergyScreen(
             null
         }
         loading = false
+    }
+
+    // ===== 趋势数据加载（v54）=====
+    // 日维度 → tds 逐日（一次请求拿整月）；月/年维度 → cm 逐月（并行 12 次）。
+    // 单独 effect：不阻塞上面的汇总加载，慢的话图表区自己显示加载态。
+    LaunchedEffect(tabIndex, selectedDate, selectedMonth, selectedYear, refreshKey) {
+        if (vin.isEmpty()) return@LaunchedEffect
+        trendLoading = true
+        trendError = null
+        trendPoints = try {
+            withContext(Dispatchers.IO) {
+                when (tabIndex) {
+                    // 日维度：画「当月逐日」，比只画一天有意义得多
+                    0 -> EnergyAPI.fetchDailyTrend(vin, YearMonth.from(selectedDate))
+                    1 -> EnergyAPI.fetchMonthlyTrend(vin, 12)
+                    else -> EnergyAPI.fetchMonthlyTrend(vin, 12)
+                }
+            }
+        } catch (e: Exception) {
+            trendError = e.message ?: "趋势数据加载失败"
+            emptyList()
+        }
+        trendLoading = false
+    }
+
+    // ===== 点击柱子 → 拿该点明细（v55）=====
+    //
+    // 浮层要显示的是「那一天的完整数据」，而趋势数据 tds 只有能耗两个字段，
+    // 拿不到里程/行程数。所以点开时**按需**再查一次对应粒度的汇总接口：
+    // 日→td（含里程）、月→cm（含里程与行程数）。只在用户真的点击时才请求，
+    // 不给页面加载增加任何常态开销。
+    LaunchedEffect(selectedTrendIndex) {
+        val idx = selectedTrendIndex ?: return@LaunchedEffect
+        val point = trendPoints.getOrNull(idx)
+        if (point == null) { detailStats = null; return@LaunchedEffect }
+        if (vin.isEmpty()) return@LaunchedEffect
+
+        detailLoading = true
+        detailStats = null
+        detailStats = try {
+            withContext(Dispatchers.IO) {
+                var monthIdx = 0
+                when {
+                    // 日维度：label 是 "01".."31"，用当前选中月的年月拼出完整日期
+                    tabIndex == 0 -> {
+                        val day = point.label.toIntOrNull()
+                        if (day == null) null
+                        else EnergyAPI.fetchDaily(vin, selectedDate.withDayOfMonth(day).toString())
+                    }
+                    // 月/年维度：label 是 "N月"，回溯到对应月份（近 12 个月里的第几个）
+                    else -> {
+                        // trendPoints 末尾即当前月，倒数第 (n-1-idx) 个月
+                        val back = trendPoints.size - 1 - idx
+                        val ym = YearMonth.now().minusMonths(back.toLong())
+                        EnergyAPI.fetchMonthly(vin, ym.year, ym.monthValue)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            null
+        }
+        detailLoading = false
+    }
+
+    // ===== 柱子详情浮层（v55）=====
+    selectedTrendIndex?.let { idx ->
+        val point = trendPoints.getOrNull(idx)
+        if (point != null) {
+            TrendDetailDialog(
+                title = if (tabIndex == 0) {
+                    "${selectedDate.year}年${selectedDate.monthValue}月${point.label.toIntOrNull() ?: point.label}日"
+                } else {
+                    val back = trendPoints.size - 1 - idx
+                    val ym = YearMonth.now().minusMonths(back.toLong())
+                    "${ym.year}年${ym.monthValue}月"
+                },
+                // 浮层优先显示从汇总接口拿到的完整数据，未回来时用趋势点的值兜底
+                stats = detailStats,
+                fallbackElec = point.elec,
+                fallbackFuel = point.fuel,
+                loading = detailLoading,
+                onDismiss = { selectedTrendIndex = null }
+            )
+        }
     }
 
     // 日期/月/年选择对话框（方案A：日=月历、月=年月网格、年=年份列表，同款风格）
@@ -436,6 +537,176 @@ fun EnergyScreen(
 
             Spacer(modifier = Modifier.height(14.dp))
 
+            // ============== 能耗趋势图（v54）==============
+            //
+            // 为什么用趋势图替代「行驶记录列表」：
+            // 探测确认网关没有单次行程(trip)接口，逐日明细(tds)只有电耗/油耗两个数字、
+            // 连里程都没有 —— 铺成列表会是一串没头没尾的数字，用户看了更困惑。
+            // 同样的数据画成趋势，反而能看出「哪个月用得多」，这才是数据支撑得住的价值。
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = LocalCardAlpha.current)
+                ),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "能耗趋势",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.weight(1f))
+                        // 指标切换：日维度无里程（tds 不返回），只给能耗选项
+                        val metrics = if (tabIndex == 0) listOf("能耗") else listOf("能耗", "里程")
+                        metrics.forEachIndexed { idx, name ->
+                            val selected = trendMetric == idx
+                            Box(
+                                modifier = Modifier
+                                    .padding(start = 6.dp)
+                                    .background(
+                                        color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                        else Color.Transparent,
+                                        shape = RoundedCornerShape(8.dp)
+                                    )
+                                    .clickable { trendMetric = idx }
+                                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    text = name,
+                                    fontSize = 12.sp,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (selected) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    when {
+                        trendLoading -> Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(150.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(28.dp),
+                                strokeWidth = 2.5.dp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+
+                        trendError != null -> Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(150.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "趋势加载失败: $trendError",
+                                fontSize = 12.sp,
+                                color = PrimaryOrange,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+
+                        else -> {
+                            val useMileage = tabIndex != 0 && trendMetric == 1
+                            EnergyTrendChart(
+                                points = trendPoints,
+                                valueOf = { p -> if (useMileage) p.mileage else p.elec },
+                                unit = if (useMileage) " km" else " kWh",
+                                barColor = if (useMileage) MaterialTheme.colorScheme.primary else PrimaryOrange,
+                                labelEvery = if (tabIndex == 0) 5 else 1,
+                                // v55：点柱子弹该周期完整明细
+                                onSelect = { selectedTrendIndex = it },
+                                selectedIndex = selectedTrendIndex
+                            )
+                        }
+                    }
+
+                    // 日维度补一条油耗折线（tds 有油耗字段，顺手用上）
+                    if (tabIndex == 0 && !trendLoading && trendError == null &&
+                        trendPoints.any { it.fuel != null }
+                    ) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "油耗趋势(L)",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        EnergyTrendLine(
+                            points = trendPoints,
+                            valueOf = { p -> p.fuel },
+                            lineColor = PrimaryOrange,
+                            height = 90
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = (if (tabIndex == 0) {
+                            "${selectedDate.year}年${selectedDate.monthValue}月 · 逐日"
+                        } else {
+                            "近 12 个月 · 逐月"
+                        }) + " · 点击柱状图查看明细",
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // ============== 油电构成饼图（v55，能量折算口径）==============
+            //
+            // ⚠️ 电耗单位 kWh、油耗单位 L，**单位不同不能直接相加算占比**
+            //    （3 个苹果 + 2 个橘子算不出谁占大头），因此按项目既有的
+            //    1 L = 3.0 kWh 折算成统一能量单位后再成饼，得到"能量构成"。
+            //    标题与脚注都写明口径，避免被误读成"升与千瓦时比大小"。
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = LocalCardAlpha.current)
+                ),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "能量构成（已折算）",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = when (tabIndex) {
+                            0 -> "${selectedDate} 当日"
+                            1 -> "${selectedMonth.year}年${selectedMonth.monthValue}月"
+                            else -> "${selectedYear}年"
+                        },
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    EnergyPieChart(
+                        elec = s?.elec,
+                        fuel = s?.fuel,
+                        label = "按 1 L 汽油 = 3.0 kWh 折算为能量后计算占比"
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
             // ============== 底部补充卡片 ==============
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -501,6 +772,122 @@ fun EnergyScreen(
 }
 
 // ============== 组件与格式化 ==============
+
+/**
+ * 柱子详情浮层（v55）。
+ *
+ * 设计要点：
+ * - 点图表柱子弹出，展示该周期的**完整明细**（含里程、行程数等趋势图拿不到的字段）
+ * - 数据未回来时先用趋势点的能耗值兜底，避免浮层一打开是空的
+ * - 里程等字段缺失显示 `--`，不显示 0 —— 与图表区同一原则，不把"没数据"说成"零"
+ */
+@Composable
+private fun TrendDetailDialog(
+    title: String,
+    stats: EnergyAPI.EnergyStats?,
+    fallbackElec: Double?,
+    fallbackFuel: Double?,
+    loading: Boolean,
+    onDismiss: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            shape = RoundedCornerShape(18.dp)
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = title,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
+                    if (loading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // 能耗两项：优先用接口值，未回来时用趋势点兜底
+                val elec = stats?.elec ?: fallbackElec
+                val fuel = stats?.fuel ?: fallbackFuel
+
+                DetailLine("耗电量", fmt(elec, 2) + " kWh")
+                Spacer(modifier = Modifier.height(10.dp))
+                DetailLine("耗油量", fmt(fuel, 2) + " L")
+                Spacer(modifier = Modifier.height(10.dp))
+                DetailLine("行驶里程", fmt(stats?.mileage, 1) + " km")
+                Spacer(modifier = Modifier.height(10.dp))
+                DetailLine("百公里电耗", fmt(stats?.elecPer100, 1) + " kWh/100km")
+                Spacer(modifier = Modifier.height(10.dp))
+                DetailLine("百公里油耗", fmt(stats?.fuelPer100, 2) + " L/100km")
+
+                if (stats?.tripCount != null) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    DetailLine("行程数", "${stats.tripCount} 次")
+                }
+                if (stats?.drivingDays != null) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    DetailLine("行驶天数", "${stats.drivingDays} 天")
+                }
+
+                // 日维度拿不到里程时说明原因，免得用户以为坏了
+                if (stats != null && stats.mileage == null) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "该周期接口未返回里程数据",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    Spacer(modifier = Modifier.weight(1f))
+                    Text(
+                        text = "关闭",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { onDismiss() }
+                            .padding(horizontal = 14.dp, vertical = 6.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DetailLine(label: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = label,
+            fontSize = 13.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.weight(1f))
+        Text(
+            text = value,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
 
 @Composable
 private fun EnergyCard(

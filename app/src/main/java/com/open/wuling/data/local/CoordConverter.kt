@@ -12,39 +12,49 @@ import kotlin.math.sqrt
  * 背景：车载 TBOX 上报的 GPS 坐标通常是 WGS84（国际标准），而高德地图使用 GCJ-02（火星坐标系）。
  * 若直接把 WGS84 坐标投到高德地图上，位置会偏移约 200~600 米（方向随地区变化）。
  *
- * 使用「坐标纠偏」开关（默认开启）：
- * - 开：把 API 坐标视为 WGS84，转换为 GCJ-02 后再显示在高德地图/导航/分享中
- * - 关：直接透传原始坐标（若服务端已返回 GCJ-02，应关闭此开关）
- * 境外坐标（中国范围外）不做转换，原样返回。
+ * v50 起纠偏为**恒定开启**：
+ * - 所有入口（地图投点 / 导航找车 / 分享位置 / 逆地理与天气解析）都走 [convert]，
+ *   把 API 坐标视为 WGS84 并转换为 GCJ-02 后再使用。
+ * - 历史遗留的 `coord_offset_enabled` 偏好项已废弃，[isOffsetEnabled] 恒返回 true，
+ *   [setOffsetEnabled] 仅作兼容保留（写值不再影响任何行为）。
+ *
+ * 境外坐标（中国范围外）不做转换，原样返回，所以恒定开启是安全的。
  */
 object CoordConverter {
 
     private const val PREFS_NAME = "wuling_config"
     private const val KEY_OFFSET_ENABLED = "coord_offset_enabled"
 
-    /** 默认开启纠偏 */
-    private const val DEFAULT_ENABLED = true
+    /** 纠偏恒定开启（v50 起不再读偏好） */
+    const val ALWAYS_ENABLED = true
 
-    fun isOffsetEnabled(context: Context): Boolean {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        return prefs.getBoolean(KEY_OFFSET_ENABLED, DEFAULT_ENABLED)
-    }
+    /**
+     * 纠偏是否开启 —— 自 v50 起恒为 true。
+     *
+     * 保留该函数是为了兼容可能存在的调用方；判断逻辑已上收到 [convert]，
+     * 调用方无需（也不应）再据此做分支。
+     */
+    @Deprecated("纠偏已恒定开启，请直接调用 convert()", ReplaceWith("ALWAYS_ENABLED"))
+    fun isOffsetEnabled(context: Context): Boolean = ALWAYS_ENABLED
 
+    /**
+     * 兼容保留：早期版本允许用户在「位置」页关闭纠偏，该 UI 已移除。
+     * 写入的值不再参与任何判断，此处仅保证老调用不崩。
+     */
+    @Deprecated("纠偏已恒定开启，此方法不再产生效果")
     fun setOffsetEnabled(context: Context, enabled: Boolean) {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putBoolean(KEY_OFFSET_ENABLED, enabled).apply()
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit() // 清掉历史残留值，避免以后有人误读
+            .remove(KEY_OFFSET_ENABLED)
+            .apply()
     }
 
     /**
-     * 按当前开关设置转换坐标。
-     * @return GCJ-02 坐标（Pair<纬度, 经度>），或纠偏关闭时的原始坐标
+     * 坐标纠偏：WGS84 → GCJ-02，恒定执行（境外坐标在 [wgs84ToGcj02] 内原样返回）。
+     * @return GCJ-02 坐标（Pair<纬度, 经度>）
      */
     fun convert(context: Context, latitude: Double, longitude: Double): Pair<Double, Double> {
-        return if (isOffsetEnabled(context)) {
-            wgs84ToGcj02(latitude, longitude)
-        } else {
-            latitude to longitude
-        }
+        return wgs84ToGcj02(latitude, longitude)
     }
 
     /** 中国范围粗判（纠偏仅在境内有意义） */
