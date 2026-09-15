@@ -794,7 +794,7 @@ private fun AboutDialog(onDismiss: () -> Unit) {
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = "五菱助手  v${BuildConfig.VERSION_NAME}",
+                    text = "五菱车控  v${BuildConfig.VERSION_NAME}",
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

@@ -1,8 +1,8 @@
 {
-  "versionCode": 42,
-  "versionName": "3.39.0-android16",
-  "updateLog": "👤 「我的」页车辆信息卡层级调整：上半行显示绑定手机号（📱 大标题），下半行显示车系名（车型），并移除原底部 VIN 行。\\n✅ 手机号（绑定手机号）置顶为主标题，车型降为次要行。\\n✅ 去掉挤窄文字区的多余 spacer，手机号不再被「编辑」按钮截断。\\n📌 包名不变：com.wuling.app.repack，可直接覆盖安装。",
+  "versionCode": 43,
+  "versionName": "3.40.0-android16",
+  "updateLog": "👤 「我的」页车辆信息卡层级调整：上半行显示绑定手机号（📱 大标题），下半行显示车系名（车型），并移除原底部 VIN 行。\\n✅ 手机号（绑定手机号）置顶为主标题，车型降为次要行。\\n✅ 去掉挤窄文字区的多余 spacer，手机号不再被「编辑」按钮截断。\\n📌 包名不变：com.wuling.app.repack，可直接覆盖安装。\n🔤 命名统一：App「关于」页与开源 README 标题/简介/安装说明统一为「五菱车控」（此前仍残留「五菱助手」字样）。\n✅ 仅文案与一处界面字符串修正，功能无变化。\n📌 包名不变：com.wuling.app.repack，可直接覆盖安装。",
   "apkUrl": "https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "17cc8acd4fbbfba6722080672ead35ee"
+  "md5": "ea85c446d35e05a701ba539771383166"
 }
