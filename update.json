@@ -1,8 +1,8 @@
 {
-  "versionCode": 51,
-  "versionName": "3.48.0-android16",
-  "updateLog": "v51 (3.48.0) 更新内容：\n1. 全屏地图升级为 3D 视图：显示立体楼块、支持俯仰与旋转手势\n2. 新增罗盘控制盘，可直观调整地图朝向与倾角\n3. 智能兼容：设备不支持 WebGL 时自动回落 2D，保证地图正常显示不空白\n4. 位置页小地图保持 2D 静态预览不变，页面流畅度不受影响",
+  "versionCode": 52,
+  "versionName": "3.49.0-android16",
+  "updateLog": "v52 (3.49.0) 更新内容：\n1. 位置页地图预览图同步升级为 3D 视图，与全屏地图观感统一\n2. 预览图采用较小俯仰角，窄幅尺寸下画面更清晰，车点更好辨认\n3. 预览图保持静态、不响应手势，页面滑动依旧顺畅\n4. 设备不支持 WebGL 时自动回落 2D，保证地图正常显示",
   "apkUrl": "https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "a29ead891359824c8453e97567c5430e"
+  "md5": "6ef73aaa9c97589adb0a5b698592c95d"
 }
