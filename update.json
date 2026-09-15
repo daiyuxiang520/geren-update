@@ -1,8 +1,8 @@
 {
-  "versionCode": 40,
-  "versionName": "3.37.0-android16",
-  "updateLog": "🗺️ 重做位置页地图交互：小地图改为静态预览，新增「全屏」按钮自由操作。\n起因：v38 给位置页加了整页滚动后，地图嵌在滚动容器里，Compose 会截走触摸事件，WebView 只收到按下、收不到移动 → **在地图上滑动变成页面在滚，地图纹丝不动**。\n✅ 小地图改为静态预览（禁用拖拽/缩放）：不再和页面抢手势，页面一路滑到底。\n✅ 地图右上角新增「全屏」按钮：打开独立的全屏地图，可自由平移、缩放、拖动，顶部有标题栏和关闭按钮。\n✅ 全屏页里没有父级滚动容器，手势完整不打折。\n💡 想看车在哪直接滑页面；想放大看周边、拖动找路，点「全屏」。",
+  "versionCode": 41,
+  "versionName": "3.38.0-android16",
+  "updateLog": "🎨 换图标、改名字：全新启动图标 + 「五菱车控」。\\n✅ 启动图标换成新设计的「电动车 + 四个功能徽标」小方圆形图标：\\n   - 自适应图标（API 26+，本应用 minSdk 即 26）：前景为图片、白底背景，\\n     交给各手机厂商的蒙版（圆角方/圆形/ squiricle）自动裁切，任意机型都不糊、不裁内容。\\n   - 各密度（mdpi~xxxhdpi）与圆形图标一并生成，老机制也兼容。\\n✅ 应用名称由 `50third` 改为「五菱车控」（同时更新 strings.xml 的 app_name）。\\n💡 桌面图标可能要重装一次或清一下启动器缓存才刷新；名字立即生效。\\n📌 包名不变：com.wuling.app.repack，可直接覆盖安装。",
   "apkUrl": "https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "5175d0d50b6a33638ffc4c0390248965"
+  "md5": "8f6c1059ed630a400cb2baa659616b23"
 }
