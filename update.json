@@ -1,8 +1,8 @@
 {
-  "versionCode": 52,
-  "versionName": "3.49.0-android16",
-  "updateLog": "v52 (3.49.0) 更新内容：\n1. 位置页地图预览图同步升级为 3D 视图，与全屏地图观感统一\n2. 预览图采用较小俯仰角，窄幅尺寸下画面更清晰，车点更好辨认\n3. 预览图保持静态、不响应手势，页面滑动依旧顺畅\n4. 设备不支持 WebGL 时自动回落 2D，保证地图正常显示",
+  "versionCode": 53,
+  "versionName": "3.50.0-android16",
+  "updateLog": "v53 (3.50.0) 更新内容：\n1. 首页「快捷控制」状态行新增车窗状态：显示「车窗全关」或「车窗未关」\n2. 车窗未关时状态行转为橙色提醒，一眼就能看出有窗没关\n3. 判定同时参考四窗状态与开度，两者不一致时按「未关」处理，避免漏报风险",
   "apkUrl": "https://raw.githubusercontent.com/daiyuxiang520/geren-update/main/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "6ef73aaa9c97589adb0a5b698592c95d"
+  "md5": "8194cc4d9d150b163daf8c6cb70a8b4d"
 }
