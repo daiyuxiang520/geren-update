@@ -619,8 +619,11 @@ class AppState @Inject constructor(
                 ControlCommand.HONK -> vehicleRepository.sendCommand("honk")
                 ControlCommand.TRUNK -> vehicleRepository.sendCommand("trunk")
                 ControlCommand.FIND_CAR -> vehicleRepository.searchCar(vehicle.vin)
-                ControlCommand.WINDOW_OPEN -> vehicleRepository.controlWindow(vehicle.vin, 1)
-                ControlCommand.WINDOW_CLOSE -> vehicleRepository.controlWindow(vehicle.vin, 0)
+                // v68 修复：车窗 status 方向与服务端相反（实测点「关窗」会开窗）。
+                // 服务端约定与门锁一致：0 = 打开类动作、1 = 关闭类动作，
+                // 故开窗=0、关窗=1（此前写反）。
+                ControlCommand.WINDOW_OPEN -> vehicleRepository.controlWindow(vehicle.vin, 0)
+                ControlCommand.WINDOW_CLOSE -> vehicleRepository.controlWindow(vehicle.vin, 1)
                 ControlCommand.IGNITION -> vehicleRepository.authorizeIgnition(vehicle.vin)
                 ControlCommand.CHARGE_RESERVE -> Result.failure(
                     com.open.wuling.data.api.APIError("该功能暂未接入，请使用官方App设置预约充电")

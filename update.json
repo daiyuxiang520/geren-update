@@ -1,8 +1,8 @@
 {
-  "versionCode": 67,
-  "versionName": "3.64.0",
-  "updateLog": "v67 (3.64.0) 更新内容：\n1. 新增 NFC 车控：碰一下已绑定的 NFC 标签即可解锁/锁车（锁车状态碰=解锁，解锁状态碰=锁车）\n2. 设置入口：「我的 → 设置 → NFC 车控」，支持标签绑定/重绑/解绑，以及无标签的模拟切换测试\n3. 标签内写入随机密钥、仅本机识别，未绑定的标签触碰不会触发任何操作\n4. 切换前先实时拉取车辆状态决定方向，失败时依次回退小组件缓存/上次记录\n5. 新增 nfc_toggle 事件埋点",
-  "apkUrl": "https://gitee.com/daiyuxiang520/geren-update/releases/download/v67/wuling-assistant.apk",
+  "versionCode": 68,
+  "versionName": "3.65.0",
+  "updateLog": "v68 (3.65.0) 更新内容：\n1. 修复车窗控制方向相反：此前点「关窗」实际会开窗、点「开窗」实际会关窗\n2. 统一指令约定：与门锁一致，0=打开类动作、1=关闭类动作（开窗=0、关窗=1）\n3. 覆盖范围：App 内开窗/关窗按钮、桌面小组件「一键关窗」、通知「一键关窗」、详情页提醒条\n4. 车辆状态显示（车窗已关/未关）不受影响，本版只修正动作方向",
+  "apkUrl": "https://gitee.com/daiyuxiang520/geren-update/releases/download/v68/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "7154b86e0f7e8ab5a24d17a978b0e008"
+  "md5": "3a00014992da18d3e7f49b2a2ecfd3ec"
 }

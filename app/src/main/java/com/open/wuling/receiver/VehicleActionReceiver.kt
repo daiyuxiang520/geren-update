@@ -101,7 +101,8 @@ class VehicleActionReceiver : BroadcastReceiver() {
 
         val (ok, msg) = when (command) {
             CMD_LOCK -> repository.controlDoorLock(vin, 1).toOutcome("锁车指令已发送", "锁车失败")
-            CMD_CLOSE_WINDOW -> repository.controlWindow(vin, 0).toOutcome("关窗指令已发送", "关窗失败")
+            // v68 修复：关窗 status 应为 1（0 = 打开类动作，与门锁 0=解锁 / 1=锁车 同一约定）
+            CMD_CLOSE_WINDOW -> repository.controlWindow(vin, 1).toOutcome("关窗指令已发送", "关窗失败")
             CMD_FIND_CAR -> repository.searchCar(vin).toOutcome("寻车指令已发送", "寻车失败")
             else -> return "未知指令"
         }
