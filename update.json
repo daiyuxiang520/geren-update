@@ -1,8 +1,8 @@
 {
-  "versionCode": 66,
-  "versionName": "3.63.0",
-  "updateLog": "v66 (3.63.0) 更新内容：\n1. 修复友盟 U-App 统计：补全会话埋点（MobclickAgent.onResume/onPause），恢复活跃用户、使用时长、留存等基础指标\n2. 扩充埋点事件：app_launch（按版本分布活跃）、refresh_status（车况刷新成败）、widget_refresh（同步桌面小组件）、ble_unlock（蓝牙自动解锁）、alert_triggered（安全/充电提醒命中）、update_dialog_action（更新弹窗点击）\n3. 更新源仍优先 Gitee 国内镜像，APK 下载免代理直连，海外走 GitHub 加速链路兜底",
-  "apkUrl": "https://gitee.com/daiyuxiang520/geren-update/releases/download/v66/wuling-assistant.apk",
+  "versionCode": 67,
+  "versionName": "3.64.0",
+  "updateLog": "v67 (3.64.0) 更新内容：\n1. 新增 NFC 车控：碰一下已绑定的 NFC 标签即可解锁/锁车（锁车状态碰=解锁，解锁状态碰=锁车）\n2. 设置入口：「我的 → 设置 → NFC 车控」，支持标签绑定/重绑/解绑，以及无标签的模拟切换测试\n3. 标签内写入随机密钥、仅本机识别，未绑定的标签触碰不会触发任何操作\n4. 切换前先实时拉取车辆状态决定方向，失败时依次回退小组件缓存/上次记录\n5. 新增 nfc_toggle 事件埋点",
+  "apkUrl": "https://gitee.com/daiyuxiang520/geren-update/releases/download/v67/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "938371a1bab4376a673f9447a601782a"
+  "md5": "7154b86e0f7e8ab5a24d17a978b0e008"
 }

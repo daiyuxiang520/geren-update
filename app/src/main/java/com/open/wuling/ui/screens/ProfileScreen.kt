@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.ElectricBolt
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Nfc
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Shield
@@ -106,6 +107,7 @@ import com.open.wuling.ui.theme.PrimaryOrange
 import com.open.wuling.ui.theme.PrimaryRed
 import com.open.wuling.ui.components.DetailRow
 import com.open.wuling.ui.components.NotificationSettingsSheet
+import com.open.wuling.ui.components.NfcSettingsSheet
 import com.open.wuling.ui.components.OemKeepAliveSheet
 import com.open.wuling.ui.components.PrivacySettingsSheet
 import com.open.wuling.ui.theme.LocalCardAlpha
@@ -123,6 +125,8 @@ fun ProfileScreen(
     val selectedVehicle by viewModel.appState.selectedVehicle.collectAsState()
     // Token 配置状态（响应式订阅，保存后实时刷新「已配置/未配置」）
     val tokenConfigured by viewModel.appState.tokenConfigured.collectAsState()
+    // NFC 车控启用状态（v67）
+    val nfcEnabled by viewModel.appState.nfcController.enabledFlow.collectAsState()
     val scrollState = rememberScrollState()
 
     var showTokenDialog by remember { mutableStateOf(false) }
@@ -132,6 +136,7 @@ fun ProfileScreen(
     var showKeepAliveSheet by remember { mutableStateOf(false) }
     var showNotificationSheet by remember { mutableStateOf(false) }
     var showPrivacySheet by remember { mutableStateOf(false) }
+    var showNfcSheet by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
     var showVehicleInfo by remember { mutableStateOf(false) }
     var tokenInput by remember { mutableStateOf("") }
@@ -402,6 +407,18 @@ fun ProfileScreen(
                     subtitle = "${com.open.wuling.oem.OemCompat.romDisplayName()} · 自启动与后台运行",
                     iconColor = PrimaryGreen,
                     onClick = { showKeepAliveSheet = true }
+                )
+
+                Divider(color = MaterialTheme.colorScheme.surfaceVariant)
+
+                // NFC 车控（v67）：碰标签切换解锁/锁车
+                SettingsItem(
+                    icon = Icons.Filled.Nfc,
+                    title = "NFC 车控",
+                    subtitle = if (nfcEnabled) "已启用 · 碰标签切换锁车" else "未启用",
+                    iconColor = PrimaryOrange,
+                    showCheck = nfcEnabled,
+                    onClick = { showNfcSheet = true }
                 )
             }
         }
@@ -770,6 +787,13 @@ fun ProfileScreen(
             }
             Toast.makeText(context, "已清除本机缓存数据", Toast.LENGTH_SHORT).show()
         }
+    )
+
+    // NFC 车控（v67：启用开关 + 绑定标签 + 模拟切换）
+    NfcSettingsSheet(
+        isOpen = showNfcSheet,
+        controller = viewModel.appState.nfcController,
+        onClose = { showNfcSheet = false }
     )
 }
 

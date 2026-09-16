@@ -23,6 +23,7 @@ import com.open.wuling.data.model.User
 import com.open.wuling.data.model.Vehicle
 import com.open.wuling.data.repository.VehicleRepository
 import com.open.wuling.data.store.TokenStore
+import com.open.wuling.nfc.NfcCarController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -38,6 +39,8 @@ import javax.inject.Singleton
 class AppState @Inject constructor(
     private val vehicleRepository: VehicleRepository,
     private val tokenStore: TokenStore,
+    /** NFC 车控执行器（v67）：设置页与 NfcTriggerActivity 共用 */
+    val nfcController: NfcCarController,
     @dagger.hilt.android.qualifiers.ApplicationContext private val context: Context
 ) {
     private val TAG = "AppState"

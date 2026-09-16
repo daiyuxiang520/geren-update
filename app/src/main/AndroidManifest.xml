@@ -44,6 +44,11 @@
     <!-- 自动更新：安装下载的 APK -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
+    <!-- NFC 车控（v67）：读取/写入 NFC 标签触发解锁/锁车。
+         required=false：无 NFC 硬件的设备仍可安装使用其余功能。 -->
+    <uses-permission android:name="android.permission.NFC" />
+    <uses-feature android:name="android.hardware.nfc" android:required="false" />
+
     <!-- Dynamic receiver permission -->
     <permission
         android:name="${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
@@ -89,6 +94,22 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- ====== NFC 触发（v67）：碰已绑定标签由系统 NDEF 派发自动拉起 ======
+             singleTask：结果页展示期间再次碰标签不叠实例，天然去抖；
+             excludeFromRecents：不进最近任务列表。 -->
+        <activity
+            android:name="com.open.wuling.nfc.NfcTriggerActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.WulingAndroid">
+            <intent-filter>
+                <action android:name="android.nfc.action.NDEF_DISCOVERED" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/vnd.com.open.wuling.nfc" />
             </intent-filter>
         </activity>
 
