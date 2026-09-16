@@ -1,8 +1,8 @@
 {
-  "versionCode": 68,
-  "versionName": "3.65.0",
-  "updateLog": "v68 (3.65.0) 更新内容：\n1. 修复车窗控制方向相反：此前点「关窗」实际会开窗、点「开窗」实际会关窗\n2. 统一指令约定：与门锁一致，0=打开类动作、1=关闭类动作（开窗=0、关窗=1）\n3. 覆盖范围：App 内开窗/关窗按钮、桌面小组件「一键关窗」、通知「一键关窗」、详情页提醒条\n4. 车辆状态显示（车窗已关/未关）不受影响，本版只修正动作方向",
-  "apkUrl": "https://gitee.com/daiyuxiang520/geren-update/releases/download/v68/wuling-assistant.apk",
+  "versionCode": 69,
+  "versionName": "3.66.0",
+  "updateLog": "v69 (3.66.0) 更新内容：\n1. 新增充电功率显示：充电时首页电量卡、桌面小组件、详情页「电池与充电」实时显示充电功率\n2. 新增循环预约充电：详情页可设置/修改/取消预约充电时段（开始与结束时间），对接官方同后端接口\n3. 修复未充电时显示虚假的 6.6kW：服务端未充电时下发空串，此前被兜底成默认值\n4. 功率单位按 kW 显示，遇异常量级（>100）自动按 W 换算，插枪实测后可一键校准",
+  "apkUrl": "https://gitee.com/daiyuxiang520/geren-update/releases/download/v69/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "3a00014992da18d3e7f49b2a2ecfd3ec"
+  "md5": "e1819711e8198538a75bd005d13b0c91"
 }
