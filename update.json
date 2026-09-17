@@ -1,8 +1,8 @@
 {
-  "versionCode": 71,
-  "versionName": "3.68.0",
-  "updateLog": "v71 (3.68.0) 更新内容：\n1. 循环预约充电入口由「详情」页迁移至「主页」：主页新增预约充电卡片，进入主页自动查询当前预约设置\n2. 点主页快捷「预约充电」按钮可滚动定位到该卡片；卡片内可查询 / 设置 / 修改 / 取消循环预约时段与充电上限\n3. 主页预约充电与详情页原功能完全一致（沿用同一套接口与状态）；详情页不再展示该区块",
-  "apkUrl": "https://gitee.com/daiyuxiang520/geren-update/releases/download/v71/wuling-assistant.apk",
+  "versionCode": 72,
+  "versionName": "3.69.0",
+  "updateLog": "v72 (3.69.0) 更新内容：\n1. 预约充电入口改为「点按钮弹出」：主页快捷「预约充电」按钮点击后弹出底部弹窗承载设置界面\n2. 主页不再常驻预约充电卡片，界面更清爽；打开弹窗时自动查询当前预约设置\n3. 弹窗内可查询 / 设置 / 修改 / 取消循环预约时段与充电上限（沿用同一套接口与状态）",
+  "apkUrl": "https://gitee.com/daiyuxiang520/geren-update/releases/download/v72/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "3fc9ccfbb3722e359512a4f77ea3576a"
+  "md5": "0d572c6de97caad1d28500de572f0d6e"
 }
