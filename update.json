@@ -1,8 +1,8 @@
 {
-  "versionCode": 69,
-  "versionName": "3.66.0",
-  "updateLog": "v69 (3.66.0) 更新内容：\n1. 新增充电功率显示：充电时首页电量卡、桌面小组件、详情页「电池与充电」实时显示充电功率\n2. 新增循环预约充电：详情页可设置/修改/取消预约充电时段（开始与结束时间），对接官方同后端接口\n3. 修复未充电时显示虚假的 6.6kW：服务端未充电时下发空串，此前被兜底成默认值\n4. 功率单位按 kW 显示，遇异常量级（>100）自动按 W 换算，插枪实测后可一键校准",
-  "apkUrl": "https://gitee.com/daiyuxiang520/geren-update/releases/download/v69/wuling-assistant.apk",
+  "versionCode": 70,
+  "versionName": "3.67.0",
+  "updateLog": "v70 (3.67.0) 更新内容：\n1. 修复「退出重进后无法使用」：登录成功改为先写盘再提示，杜绝杀进程丢 Token\n2. 新增自动重新登录：Token 被官方App等其它设备顶掉时，自动用已保存凭据静默恢复，无需手动重登\n3. 登录凭据经 Android Keystore 硬件级加密存储，设置页「我的」可关闭或清除\n4. 自动恢复全程无感，恢复后车况自动刷新",
+  "apkUrl": "https://gitee.com/daiyuxiang520/geren-update/releases/download/v70/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "f10db51451851c9fe0322c8371e23c35"
+  "md5": "544304a4e3e38c1e8063eed7cd039339"
 }
