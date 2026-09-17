@@ -1,8 +1,8 @@
 {
-  "versionCode": 70,
-  "versionName": "3.67.0",
-  "updateLog": "v70 (3.67.0) 更新内容：\n1. 修复「退出重进后无法使用」：登录成功改为先写盘再提示，杜绝杀进程丢 Token\n2. 新增自动重新登录：Token 被官方App等其它设备顶掉时，自动用已保存凭据静默恢复，无需手动重登\n3. 登录凭据经 Android Keystore 硬件级加密存储，设置页「我的」可关闭或清除\n4. 自动恢复全程无感，恢复后车况自动刷新",
-  "apkUrl": "https://gitee.com/daiyuxiang520/geren-update/releases/download/v70/wuling-assistant.apk",
+  "versionCode": 71,
+  "versionName": "3.68.0",
+  "updateLog": "v71 (3.68.0) 更新内容：\n1. 循环预约充电入口由「详情」页迁移至「主页」：主页新增预约充电卡片，进入主页自动查询当前预约设置\n2. 点主页快捷「预约充电」按钮可滚动定位到该卡片；卡片内可查询 / 设置 / 修改 / 取消循环预约时段与充电上限\n3. 主页预约充电与详情页原功能完全一致（沿用同一套接口与状态）；详情页不再展示该区块",
+  "apkUrl": "https://gitee.com/daiyuxiang520/geren-update/releases/download/v71/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "544304a4e3e38c1e8063eed7cd039339"
+  "md5": "3fc9ccfbb3722e359512a4f77ea3576a"
 }
