@@ -2,6 +2,9 @@
 
 > 面向 **Android 16** 的五菱车联网第三方客户端，附带桌面小组件、能耗统计、App 内自动更新等增强功能。
 
+> **国内镜像仓库**：本仓库为 [GitHub daiyuxiang520/geren-update](https://github.com/daiyuxiang520/geren-update) 的国内镜像，源码完全一致，供国内高速访问与 App 自动更新下载。APK 以「发行版」附件形式提供，不占用仓库体积。
+
+
 [![最新版本](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fedgeone.gh-proxy.org%2Fhttps%3A%2F%2Fraw.githubusercontent.com%2Fdaiyuxiang520%2Fgeren-update%2Fmain%2Fupdate.json&query=%24.versionName&label=最新版本&color=blue)](https://github.com/daiyuxiang520/geren-update/releases/latest)
 [![Android](https://img.shields.io/badge/Android-16%20(targetSdk%2036)-green)]()
 [![包名](https://img.shields.io/badge/包名-com.wuling.app.repack-orange)]()
@@ -91,6 +94,7 @@ export WULING_KEY_PASSWORD=your_key_password
 
 | 版本 | 说明 |
 |---|---|
+| **v74** (3.71.0) | **数据刷新机制优化**：新增实时推送通道（MQTT），车况变化感知更及时；该通道默认关闭，可在「我的 → MQTT 设置」中开启并查看连接状态。修正部分车型车辆状态订阅参数，为后续实时功能打好基础。升级兼容性优化，提升老版本覆盖安装成功率 |
 | **v72** (3.69.0) | **预约充电入口改为「点按钮弹出」**：主页快捷「预约充电」按钮点击后弹出底部弹窗承载设置界面；主页不再常驻预约充电卡片；打开弹窗时自动查询当前预约设置，弹窗内可查询 / 设置 / 修改 / 取消循环预约时段与充电上限 |
 | **v71** (3.68.0) | **预约充电入口迁移至主页**：主页新增预约充电卡片（进入主页自动查询当前预约），快捷「预约充电」按钮滚动定位到该卡片；卡片内可查询 / 设置 / 修改 / 取消循环预约时段与充电上限；详情页不再展示该区块 |
 | **v67** (3.67.0) | **登录态持久化**：登录凭据经 AndroidKeyStore 加密存储于本机，Token 失效/被顶号时自动静默重登，彻底解决「退出重进就掉线」；「我的」页新增「自动重登」开关 |

@@ -1,8 +1,8 @@
 {
-  "versionCode": 72,
-  "versionName": "3.69.0",
-  "updateLog": "v72 (3.69.0) 更新内容：\n1. 预约充电入口改为「点按钮弹出」：主页快捷「预约充电」按钮点击后弹出底部弹窗承载设置界面\n2. 主页不再常驻预约充电卡片，界面更清爽；打开弹窗时自动查询当前预约设置\n3. 弹窗内可查询 / 设置 / 修改 / 取消循环预约时段与充电上限（沿用同一套接口与状态）",
-  "apkUrl": "https://gitee.com/daiyuxiang520/geren-update/releases/download/v72/wuling-assistant.apk",
+  "versionCode": 74,
+  "versionName": "3.71.0",
+  "updateLog": "v74 (3.71.0) 更新内容：\n1. 优化数据刷新机制，车况变化感知更及时（新增实时推送通道，默认关闭，可在「我的 → MQTT 设置」中开启）\n2. 修正部分车型车辆状态订阅参数，为后续实时功能打好基础\n3. 升级兼容性优化，提升老版本覆盖安装成功率",
+  "apkUrl": "https://gitee.com/daiyuxiang520/geren-update/releases/download/v74/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "0d572c6de97caad1d28500de572f0d6e"
+  "md5": "280af80b1f6c608a3c880c951f3b4e62"
 }
