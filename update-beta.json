@@ -1,0 +1,8 @@
+{
+  "versionCode": 75,
+  "versionName": "3.72.0-beta1",
+  "updateLog": "⚠️ 测试版（非稳定发布）· v75 beta1 (3.72.0-beta1)\n\n本版用于排查「MQTT 实时推送连不上」的问题，同时在设置中新增了「更新通道」切换开关。\n\n1. 新增「更新通道」切换：「我的 → 设置 → 更新通道」可选择稳定版 / 测试版，选择即时生效\n2. MQTT 连接新增分段诊断：DNS 解析 → TCP 连通 → CONNECT 握手，每一步都会打印日志，不再只显示「正在连接」\n3. 新增 CONNECT 超时保护（15 秒无响应即报「CONNECT 超时（无 CONNACK）」，不再无限等待）\n4. 连接被拒时打印 CONNACK 返回码及中文含义（rc=4 账密错误 / rc=5 未授权等）\n\n提示：切回「稳定版」通道即可回到正式发布的版本，本版不影响原有 30 秒轮询刷新。",
+  "apkUrl": "https://gitee.com/daiyuxiang520/geren-update/releases/download/v75-beta/wuling-assistant.apk",
+  "forceUpdate": false,
+  "md5": "68ce7901fa7a381d5c671285af91acdd"
+}
