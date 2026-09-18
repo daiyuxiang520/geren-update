@@ -1,8 +1,8 @@
 {
-  "versionCode": 75,
-  "versionName": "3.72.0",
-  "updateLog": "v75 (3.72.0) 更新内容：\n1. 新增「更新通道」切换：「我的 → 设置 → 更新通道」可选择稳定版 / 测试版，切换后即时生效，便于参与灰度验证\n2. 优化实时推送连接的排查能力：连接过程分段记录（域名解析 → 网络连通 → 握手）并显示明确结果，不再停留于「正在连接」\n3. 连接异常时给出具体原因提示，便于定位问题\n4. 升级兼容性优化，提升老版本覆盖安装成功率",
-  "apkUrl": "https://gitee.com/daiyuxiang520/geren-update/releases/download/v75/wuling-assistant.apk",
+  "versionCode": 76,
+  "versionName": "3.73.0",
+  "updateLog": "v76 (3.73.0) 更新内容：\n1. 停车记录显示地点名：历史停车点自动补全所在位置名称（路名/小区/商场等），列表优先展示地名，无网络或途中点降级显示经纬度\n2. 地名仅在「停留 ≥ 2 分钟」的停车点补全，高速途经点不打网络，避免浪费配额\n3. 复用现有高德逆地理能力，无需新增权限与接口\n4. 下发链路切换至雨云对象存储（S3），国内下载更快更稳定",
+  "apkUrl": "https://cn-nb2.rains3.com/dump/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "4e58e7801e043be8126d3f67c90ecb52"
+  "md5": "e72936654655399905c0b1e89f0671c6"
 }
