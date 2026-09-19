@@ -40,7 +40,7 @@
 [Gitee 仓库](https://gitee.com/daiyuxiang520/geren-update) 同步自本仓库，APK 以「发行版」附件托管。GitHub 直链在国内可能无法访问，建议国内用户直接用：
 
 ```
-https://gitee.com/daiyuxiang520/geren-update/releases/download/v78/wuling-assistant.apk
+https://gitee.com/daiyuxiang520/geren-update/releases/download/v79/wuling-assistant.apk
 ```
 
 把末尾 `v65` 换成任意版本号即可下载对应版本，无需任何第三方代理前缀。
@@ -115,6 +115,7 @@ export WULING_KEY_PASSWORD=your_key_password
 
 | 版本 | 说明 |
 |---|---|
+| **v79** (3.76.0) | **蓝牙免开关连接（策略解耦）**：把「能否连接蓝牙」与「自动解锁策略」拆开 —— 新增「蓝牙自动连接」开关（默认开启），不打开任何开关也能连接蓝牙手动控车；原「启用无感控车」更名为「靠近自动解锁 / 远离自动上锁」，关闭时蓝牙照常连接且不会被 RSSI 误自动解锁；修复「断开蓝牙会顺手关掉开关、下次想连还得重开」的体感问题。沿用 v78 充电功率本地估算。MD5 `e10fa1196f21fe9758c3914258dbc806` |
 | **v78** (3.75.0) | **充电功率本地估算兜底**：云端 `carStatus.chargePower` 在充电时多数不下发（空串），改为本地用「电压(V) × 电流(A)」估算兜底；对默认占位值（约 350V×50A）做剔除，避免显示假功率；无有效数据时显示 `--`。首页电量卡 / 详情页 / 桌面小组件三处同步显示。沿用 v77 的蓝牙钥匙连接成功 Toast 提示。更新通道 `update.json` 已切至雨云 S3；GitHub Release 资产 `wuling-assistant.apk` 作兜底。MD5 `177b7256f52ededca5318e752e30a6e8` |
 | **v77** (3.74.0) | **蓝牙钥匙连接成功提示 + 官方签名**：BLE 鉴权成功后弹出「蓝牙钥匙已就绪，可控制车辆」Toast；APK 改用官方 keystore 签名（证书 SHA-256 `7b9f49df9bd31e131ac5f0cdfa0c65651f8e17eee75d3ed65cd2fe5b137d5e37`） |
 | **v76** (3.73.0) | **停车记录显示地点名 + 下发切换至雨云 S3**：历史停车点自动补全所在位置名称（路名 / 小区 / 商场等），列表优先展示地名，无网络或高速途经点降级显示经纬度；地名仅在「停留 ≥ 2 分钟」的停车点补全（高速途经点不打网络，避免浪费高德配额）；复用现有高德逆地理能力，无需新增权限与接口。更新通道（`update.json`）正式切换至雨云对象存储（S3）`https://cn-nb2.rains3.com/dump/wuling-assistant.apk`，国内下载更快更稳定；GitHub Release 资产 `wuling-assistant.apk` 仅作 S3 抖动时的兜底。MD5 `e72936654655399905c0b1e89f0671c6` |
@@ -173,4 +174,4 @@ export WULING_KEY_PASSWORD=your_key_password
 
 ---
 
-<sub>最后更新：2026-09-17</sub>
+<sub>最后更新：2026-09-20</sub>
