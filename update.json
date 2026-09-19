@@ -1,8 +1,8 @@
 {
-  "versionCode": 77,
-  "versionName": "3.74.0",
-  "updateLog": "v77 (3.74.0) 更新内容：\n1. 蓝牙钥匙连接成功提示：BLE 鉴权握手完成后弹「蓝牙钥匙已就绪，可控制车辆」，首连与断连重连均会提示，不再需要盯着日志判断连没连上\n2. 沿用 v76 的停车记录地点名（停留≥2分钟补全）与雨云对象存储（S3）下发",
+  "versionCode": 78,
+  "versionName": "3.75.0",
+  "updateLog": "v78 (3.75.0) 更新内容：\n1. 充电功率显示：云端 carStatus.chargePower 在充电时多数不下发，改为本地用「电压(V) × 电流(A)」估算兜底（剔除默认占位值，无数据时显示 --），首页电量卡 / 详情页 / 桌面小组件三处同步显示\n2. 沿用 v77 蓝牙钥匙连接成功提示、停车记录地点名补全与雨云 S3 下发",
   "apkUrl": "https://cn-nb2.rains3.com/dump/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "0a0f3ea7cae40117ca0c3c17e0cdbd2f"
+  "md5": "177b7256f52ededca5318e752e30a6e8"
 }
