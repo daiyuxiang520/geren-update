@@ -29,6 +29,14 @@ private val JSON_MEDIA_TYPE = "application/json; charset=UTF-8".toMediaType()
 private const val LLB_LOGIN_URL = "https://hapi.00bang.cn/llb/oauth/llb/ucenter/login"
 
 /**
+ * v74：官方 MQTT 凭证接口。
+ * 未加固 APK 反编译确认为 `/junApi/sgmw` + `/base/mqtt/auth`：
+ *   POST body {"vin":"<VIN>"} → {"result":true,"data":{"token":"<32位hex>"}}
+ * （v73 曾误用 /sgmw/base/parking/mqtt/confirm，实测 404，已修正）
+ */
+private const val MQTT_CREDENTIAL_URL = "https://openapi.baojun.net/junApi/sgmw/base/mqtt/auth"
+
+/**
  * v59：接入 AppLogger 的网络日志拦截器（供 WulingAPI / EnergyAPI 共用）。
  *
  * 请求（方法+路径+脱敏后请求体）与响应（HTTP 码+脱敏后响应体）写入「我的 → 调试日志」，
@@ -292,7 +300,8 @@ class WulingAPI @Inject constructor() {
                             val errorCode = carStatusResponse.errorCode ?: "unknown"
                             
                             when (errorCode) {
-                                "500009" -> Result.failure(APIError("登录已失效，请重新配置 Token"))
+                                // v70：500009 改用专用类型，调用方据此自动重登
+                                "500009" -> Result.failure(SessionExpiredError("登录已失效，正在自动重新登录"))
                                 else -> Result.failure(APIError("$errorMsg (错误码: $errorCode)"))
                             }
                         }
@@ -674,6 +683,223 @@ class WulingAPI @Inject constructor() {
         }
     }
 
+    // ==================== 循环预约充电 (v69) ====================
+    // 接口路径来自官方 App dex 静态提取，并用线上只读查询闭环验证过 /car/cycle/charge/query
+    // （返回字段与 ReserveChargeStatusInfoBean 完全对应）。
+    //
+    // 设计约束：chargeLimit / chargeModel / chargeRequest / type 四个字段的枚举语义未知，
+    // 因此设置时只提交时间，其余字段**原样回传**服务端当前值（为 null 时传空串），
+    // 绝不臆造枚举，避免把车端设成无法预料的状态。
+
+    /** 统一 POST JSON，返回响应体原文（抛出异常交由调用方捕获） */
+    private fun postJson(path: String, params: Map<String, Any?>): String {
+        val timestamp = System.currentTimeMillis().toString()
+        val nonce = generateRandomLetters(10)
+        val headers = buildCommonHeaders(APIConfig.accessToken, timestamp, nonce)
+        val requestBuilder = Request.Builder()
+            .url("${APIConfig.baseURL}$path")
+            .post(gson.toJson(params).toRequestBody(JSON_MEDIA_TYPE))
+        headers.forEach { (k, v) -> requestBuilder.header(k, v) }
+        val response = client.newCall(requestBuilder.build()).execute()
+        return response.body?.string() ?: throw APIError("网络错误：响应体为空")
+    }
+
+    /** 查询循环预约充电设置：POST /car/cycle/charge/query */
+    suspend fun queryReserveCharge(vin: String): Result<APIResponse<ReserveChargeInfo>> =
+        withContext(Dispatchers.IO) {
+            if (!APIConfig.isConfigured) {
+                return@withContext Result.failure(APIError("请先配置 Access Token"))
+            }
+            executeWithRetry {
+                requestMutex.withLock {
+                    try {
+                        val body = postJson("/car/cycle/charge/query", mapOf("vin" to vin))
+                        val type = object : com.google.gson.reflect.TypeToken<APIResponse<ReserveChargeInfo>>() {}.type
+                        Result.success(gson.fromJson<APIResponse<ReserveChargeInfo>>(body, type))
+                    } catch (e: Exception) {
+                        Result.failure(APIError(e.message ?: "网络错误"))
+                    }
+                }
+            }
+        }
+
+    /** 设置循环预约充电：POST /car/cycle/charge/reserve */
+    suspend fun setReserveCharge(
+        vin: String,
+        startHour: String,
+        startMinute: String,
+        endHour: String,
+        endMinute: String,
+        chargeLimit: String?,
+        chargeModel: String?,
+        chargeRequest: String?,
+        type: String?
+    ): Result<APIResponse<Any>> = withContext(Dispatchers.IO) {
+        if (!APIConfig.isConfigured) {
+            return@withContext Result.failure(APIError("请先配置 Access Token"))
+        }
+        executeWithRetry {
+            requestMutex.withLock {
+                try {
+                    val body = postJson(
+                        "/car/cycle/charge/reserve",
+                        mapOf(
+                            "vin" to vin,
+                            "startHour" to startHour,
+                            "startMinute" to startMinute,
+                            "endHour" to endHour,
+                            "endMinute" to endMinute,
+                            // 未知枚举字段原样回传，null → 空串（与服务端下发格式一致）
+                            "chargeLimit" to (chargeLimit ?: ""),
+                            "chargeModel" to (chargeModel ?: ""),
+                            "chargeRequest" to (chargeRequest ?: ""),
+                            "type" to (type ?: "")
+                        )
+                    )
+                    val t = object : com.google.gson.reflect.TypeToken<APIResponse<Any>>() {}.type
+                    Result.success(gson.fromJson<APIResponse<Any>>(body, t))
+                } catch (e: Exception) {
+                    Result.failure(APIError(e.message ?: "网络错误"))
+                }
+            }
+        }
+    }
+
+    /** 取消循环预约充电：POST /car/cancel/cycle/charge/reserve */
+    suspend fun cancelReserveCharge(vin: String): Result<APIResponse<Any>> =
+        withContext(Dispatchers.IO) {
+            if (!APIConfig.isConfigured) {
+                return@withContext Result.failure(APIError("请先配置 Access Token"))
+            }
+            executeWithRetry {
+                requestMutex.withLock {
+                    try {
+                        val body = postJson("/car/cancel/cycle/charge/reserve", mapOf("vin" to vin))
+                        val t = object : com.google.gson.reflect.TypeToken<APIResponse<Any>>() {}.type
+                        Result.success(gson.fromJson<APIResponse<Any>>(body, t))
+                    } catch (e: Exception) {
+                        Result.failure(APIError(e.message ?: "网络错误"))
+                    }
+                }
+            }
+        }
+
+    // ==================== MQTT 凭证 (v73) ====================
+    // 官方 getMQTTToken 流程：用 accessToken 调 openapi.baojun.net 的凭证接口换取
+    // MQTT 登录用的 username/password（可能还有 clientId/topic）。
+    //
+    // v74 更新：未加固 APK 反编译 + 线上实测已确认响应形态——
+    //   POST /junApi/sgmw/base/mqtt/auth  body {"vin":"<VIN>"}
+    //   → {"result":true,"data":{"token":"<32位hex>"}}
+    // 线上 `data` 实际**只返回 token**（官方数据类 MqttAuthResponse 的 password/clientId 有默认值，可空）。
+    // 官方把 token 放在 **username 位置**（写入 wuling_mqtt_v2 时 {"username":<token>,...}），
+    // 故此处 username 优先取 token；password/clientId 为空时由上层按官方规则补齐/回退。
+
+    /**
+     * 获取 MQTT 登录凭证。
+     * @param url 凭证接口地址（默认 MQTT_CREDENTIAL_URL，可被 MqttConfig 覆盖）
+     * @return 解析到的三要素（username/password 都为空表示未识别到可用字段）
+     */
+    suspend fun fetchMqttCredential(
+        vin: String,
+        url: String = MQTT_CREDENTIAL_URL
+    ): Result<com.open.wuling.data.mqtt.MqttCredential> = withContext(Dispatchers.IO) {
+        if (!APIConfig.isConfigured) {
+            return@withContext Result.failure(APIError("请先配置 Access Token"))
+        }
+        try {
+            val timestamp = System.currentTimeMillis().toString()
+            val nonce = generateRandomLetters(10)
+            val headers = buildCommonHeaders(APIConfig.accessToken, timestamp, nonce)
+            // 请求体：官方接口需要 vin；accessToken 已随 sgmwaccesstoken 头带上
+            val body = gson.toJson(mapOf("vin" to vin))
+            val request = Request.Builder()
+                .url(url)
+                .post(body.toRequestBody(JSON_MEDIA_TYPE))
+            headers.forEach { (k, v) -> request.header(k, v) }
+
+            val response = client.newCall(request.build()).execute()
+            val text = response.body?.string()
+            AppLogger.apiResponse("POST /mqtt/auth", response.code, sanitizeForLog(text ?: ""))
+            if (text == null) {
+                return@withContext Result.failure(APIError("网络错误：响应体为空"))
+            }
+            if (response.code != 200) {
+                return@withContext Result.failure(APIError("MQTT 凭证接口返回 ${response.code}"))
+            }
+
+            // 防御式解析：{data:{...}} 或平铺 {...}
+            val map = runCatching { gson.fromJson(text, Map::class.java) as? Map<String, Any> }.getOrNull()
+            // 网关统一信封：result=false 时给 errorCode/errorMessage（如 20006 方法参数无效 / 400016 无权控制此车辆）
+            val resultFlag = map?.get("result")
+            if (resultFlag is Boolean && !resultFlag) {
+                val code = pickString(map, "errorCode")
+                val msg = pickString(map, "errorMessage").ifEmpty { "未知错误" }
+                AppLogger.w("WulingAPI", "MQTT 凭证接口业务失败 $code: $msg", text.take(400))
+                return@withContext Result.failure(APIError("[$code] $msg"))
+            }
+            val data = (map?.get("data") as? Map<*, *>) ?: map
+            // v74 实证：官方 username 位置存的就是 token
+            val mqttToken = pickString(data, "token", "mqttToken", "mqtt_token")
+            val username = pickString(data, "username", "mqttUser", "mqttUsername", "user", "userName", "mqtt_user")
+                .ifEmpty { mqttToken }
+            val password = pickString(data, "password", "mqttPwd", "mqttPassword", "pwd", "pass", "mqtt_pwd")
+                .ifEmpty { mqttToken }   // 官方 password 常见为空，先回退成 token 让上层有可用值
+            val clientId = pickString(data, "clientId", "client_id", "mqttClientId", "mqtt_client_id")
+            val topic = pickString(data, "topic", "topics", "mqttTopic", "mqtt_topic")
+
+            if (username.isEmpty() && password.isEmpty()) {
+                AppLogger.w("WulingAPI", "MQTT 凭证响应未识别到 token/username/password 字段", text.take(400))
+                return@withContext Result.failure(APIError("凭证响应无可用字段（已写入调试日志）"))
+            }
+            Result.success(
+                com.open.wuling.data.mqtt.MqttCredential(
+                    username = username,
+                    password = password,
+                    clientId = clientId.ifEmpty { null },
+                    topic = topic.ifEmpty { null }
+                )
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "fetchMqttCredential 异常: ${e.message}")
+            Result.failure(APIError(e.message ?: "凭证获取失败"))
+        }
+    }
+
+    /** 从 Map 里按候选 key 顺序取第一个非空字符串值（Gson 解析出的 Map 值是 Any） */
+    private fun pickString(map: Map<*, *>?, vararg keys: String): String {
+        if (map == null) return ""
+        for (k in keys) {
+            val v = map[k] ?: continue
+            if (v != null && v.toString().isNotEmpty() && v.toString() != "null") {
+                return v.toString()
+            }
+        }
+        return ""
+    }
+
+}
+
+/**
+ * 充电功率解析（方案 A 兜底）。
+ * - 服务端 carStatus.chargePower 为非空正数时直接采用；单位可能是 W 或 kW，
+ *   formatChargePower() 已做「>100 视为 W→÷1000」双向防御，无需在此关心。
+ * - 缺失/为空时，用 电压(V) × 电流(A) 估算（结果单位 W）。
+ * - 剔除「未下发」占位：任一值 <=0，或落在默认占位区间 350V×50A，视为无数据返回 null
+ *   （否则会把默认假值算成 17.5kW 的假功率）。
+ * ⚠️ 待实测校准：充电时看详情页「电压/电流」真实值，确认字段与单位口径是否正确。
+ */
+private fun computeChargePower(raw: String?, voltage: Double?, current: Double?): Double? {
+    // 1) 服务端直读优先
+    raw?.trim()?.takeIf { it.isNotEmpty() }?.toDoubleOrNull()?.let { if (it > 0.0) return it }
+    // 2) 缺失则用 电压(V) × 电流(A) 估算（单位 W，formatChargePower 负责归一为 kW）
+    val v = voltage ?: 0.0
+    val c = current ?: 0.0
+    if (v <= 0.0 || c <= 0.0) return null
+    if (v in 340.0..360.0 && c in 45.0..55.0) return null // 默认占位，视为未下发
+    val watts = v * c
+    if (watts <= 0.0) return null
+    return watts
 }
 
 // Extension to convert API response to VehicleStatus
@@ -732,7 +958,14 @@ fun CarStatusApi.toVehicleStatus(
         leftBatteryPower = leftBatteryPower ?: 0.0,
         voltage = voltage ?: 0.0,
         current = current ?: 0.0,
-        chargePower = chargePower?.toDoubleOrNull() ?: 0.0,
+        // 方案 A：充电功率解析。服务端 carStatus.chargePower 优先（多数场景不下发空串），
+        //   缺失/为空时用 电压(V) × 电流(A) 估算（返回 W，formatChargePower 归一为 kW）。
+        //   需实测校准：voltage/current 默认值 350/50 为「未下发」占位，会由 computeChargePower 剔除。
+        chargePower = computeChargePower(
+            raw = chargePower,
+            voltage = voltage,
+            current = current
+        ),
 
         // 车门 — 用 doorXOpenStatus 判断是否打开，用 doorXLockStatus 判断是否锁定
         // 门锁状态：0=锁定, 1=解锁

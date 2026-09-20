@@ -28,6 +28,7 @@ import com.open.wuling.data.model.ControlCommand
 import com.open.wuling.data.model.Vehicle
 import com.open.wuling.data.model.VehicleStatus
 import com.open.wuling.data.model.hasAnyOpen
+import com.open.wuling.data.api.ReserveChargeInfo
 import com.open.wuling.util.FormatUtils
 import com.open.wuling.ui.theme.*
 import com.open.wuling.ui.theme.LocalCardAlpha
@@ -45,17 +46,30 @@ fun HomeScreen(
     onOpenBleSettings: () -> Unit = {},
     bleConnectionState: BleAutoLockManager.ConnectionState = BleAutoLockManager.ConnectionState.Disconnected,
     onToggleBleConnection: () -> Unit = {},
-    bleFilteredRssi: Int? = null
+    bleFilteredRssi: Int? = null,
+    // v69：循环预约充电（v72 起改为底部弹窗，由快捷按钮触发）
+    reserveCharge: ReserveChargeInfo? = null,
+    reserveChargeLoading: Boolean = false,
+    onLoadReserveCharge: () -> Unit = {},
+    onSetReserveCharge: (Int, Int, Int, Int) -> Unit = { _, _, _, _ -> },
+    onCancelReserveCharge: () -> Unit = {}
 ) {
     UmengPageView("车辆")
 
     val scrollState = rememberScrollState()
+    // 预约充电底部弹窗开关
+    var showReserveSheet by remember { mutableStateOf(false) }
 
     // 仅在首次加载且未配置时自动刷新
     LaunchedEffect(vehicle) {
         if (vehicle == null) {
             onRefresh()
         }
+    }
+
+    // 打开预约弹窗时查询一次当前预约设置（VIN 就绪后补拉，覆盖冷启动竞态）
+    LaunchedEffect(vehicle?.vin, showReserveSheet) {
+        if (showReserveSheet && !vehicle?.vin.isNullOrBlank()) onLoadReserveCharge()
     }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -139,7 +153,8 @@ fun HomeScreen(
                         vehicle.status.window4OpenDegree
                     ),
                     isPowerOn = FormatUtils.isPowerOn(vehicle.status.keyStatus),
-                    onCommand = onCommand
+                    onCommand = onCommand,
+                    onReserveCharge = { showReserveSheet = true }
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -224,6 +239,17 @@ fun HomeScreen(
             ) {
                 Text(result.message)
             }
+        }
+
+        // 预约充电底部弹窗（v72：由主页快捷「预约充电」按钮触发）
+        if (showReserveSheet) {
+            ReserveChargeSheet(
+                reserveCharge = reserveCharge,
+                isLoading = reserveChargeLoading,
+                onSet = onSetReserveCharge,
+                onCancel = onCancelReserveCharge,
+                onDismiss = { showReserveSheet = false }
+            )
         }
     }
 }
@@ -379,6 +405,32 @@ private fun VehicleSummaryCard(vehicle: Vehicle) {
                     barColor = BatteryGreen
                 )
 
+                // v69：充电中时在电量条下方显示实时充电功率。
+                // 判定用「充电中 OR 服务端确实回了功率」双条件：
+                // vecChrgingSts 的取值语义尚未完全确认，只认 isCharging 可能漏显示。
+                if (status.isCharging || (status.chargePower ?: 0.0) > 0.0) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Filled.Bolt,
+                            contentDescription = null,
+                            tint = BatteryGreen,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = if (status.isCharging) {
+                                "充电中 · ${FormatUtils.formatChargePower(status.chargePower)}"
+                            } else {
+                                "充电功率 ${FormatUtils.formatChargePower(status.chargePower)}"
+                            },
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = BatteryGreen
+                        )
+                    }
+                }
+
                 // 橙色：油量百分比 + 燃油续航（仅混动/燃油）
                 if (showFuel) {
                     Spacer(modifier = Modifier.height(12.dp))
@@ -470,7 +522,8 @@ private fun QuickControlSection(
     isClimateOn: Boolean,
     windowsOpen: Boolean,
     isPowerOn: Boolean,
-    onCommand: (ControlCommand) -> Unit
+    onCommand: (ControlCommand) -> Unit,
+    onReserveCharge: () -> Unit
 ) {
     // v63：敏感操作二次确认。
     // 解锁 / 开窗 / 启动 / 开尾门 都是「把车打开」的动作，误触代价高（口袋里顶到、
@@ -576,7 +629,7 @@ private fun QuickControlSection(
                 icon = Icons.Filled.EvStation,
                 label = "预约充电",
                 tint = MaterialTheme.colorScheme.primary,
-                onClick = { onCommand(ControlCommand.CHARGE_RESERVE) }
+                onClick = onReserveCharge
             )
             QuickButton(
                 modifier = Modifier.weight(1f),

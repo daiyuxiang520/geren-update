@@ -41,10 +41,6 @@ object UpdateConfig {
      * 加速源是第三方 CDN，返回旧缓存副本时也能靠其它已刷新的源纠正
      * （顺序遍历「首个成功即用」会被陈旧缓存卡住，导致检测不到新版本）。
      */
-    /**
-     * 加速源条目：url 为代理前缀，label 为 UI 展示名（取域名，便于用户辨识）。
-     * 顺序即「实测从快到慢」，UI 列表与下载测速均沿用此顺序。
-     */
     data class MirrorEntry(val label: String, val url: String)
 
     private val MIRRORS = listOf(
@@ -66,7 +62,7 @@ object UpdateConfig {
     )
 
     /**
-     * update.json 的候选地址：**Gitee 直连优先**，其后是各加速源拼接的 raw 直链。
+     * 【稳定版】update.json 的候选地址：**Gitee 直连优先**，其后是各加速源拼接的 raw 直链。
      *
      * Gitee 排在最前不是形式主义：fetchUpdateInfo 并发请求全部源、取 versionCode
      * 最大的结果，且**版本相同时保留先返回者**。国内 Gitee 往返通常几十毫秒，
@@ -77,6 +73,30 @@ object UpdateConfig {
      */
     val UPDATE_JSON_URLS: List<String> =
         listOf("$GITEE_RAW/update.json") + MIRRORS.map { "${it.url}$RAW/update.json" }
+
+    /**
+     * 【测试版】update-beta.json 的候选地址，结构同稳定版，仅文件名不同。
+     *
+     * v75 起引入双通道：稳定版与测试版各自维护独立的版本清单，互不干扰。
+     *  - 稳定版用户完全不会读到测试版清单，不会被灰度包打扰；
+     *  - 测试版用户也不会因为稳定版清单版本号更低而被提示「降级」；
+     *  - 两条轨道可异步推进：稳定版停在 v74 时，测试版仍可继续发 v76-beta。
+     *
+     * 用户在「我的 → 设置 → 更新通道」中切换，选择持久化在 DataStore。
+     */
+    val UPDATE_JSON_URLS_BETA: List<String> =
+        listOf("$GITEE_RAW/update-beta.json") + MIRRORS.map { "${it.url}$RAW/update-beta.json" }
+
+    /** 按通道取对应的版本清单地址列表 */
+    fun updateJsonUrls(channel: String): List<String> =
+        if (channel == STABLE_CHANNEL) UPDATE_JSON_URLS else UPDATE_JSON_URLS_BETA
+
+    /**
+     * 更新通道常量。
+     * 与 UpdateChannelPreferences 的取值保持一致（此处声明为字符串便于该模块独立编译）。
+     */
+    const val STABLE_CHANNEL = "stable"
+    const val BETA_CHANNEL = "beta"
 
     /** 兼容旧调用：默认使用第一个加速源 */
     val UPDATE_JSON_URL: String get() = UPDATE_JSON_URLS.first()

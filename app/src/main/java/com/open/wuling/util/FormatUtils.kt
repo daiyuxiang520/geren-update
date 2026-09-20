@@ -153,6 +153,26 @@ object FormatUtils {
     }
 
     /**
+     * 格式化充电功率
+     *
+     * 服务端 carStatus.chargePower 在下发时为字符串，未充电/无数据时空串。
+     * 单位待实测确认（官方 dex 中仅见 " kW"/" kW·h/100km" 的能耗文案，
+     * 无法静态确认功率是 kW 还是 W），故此处做双向防御：
+     *   - 正常量级（<= 100）按 kW 处理，如 6.6 → "6.6 kW"
+     *   - 超过 100 的量级判定为 W，除以 1000 后按 kW 显示，如 6600 → "6.6 kW"
+     * 等用户插枪实测一次真实值后，若发现偏大/偏小 1000 倍，只需改本函数一处。
+     *
+     * @param power 服务端原始功率值，null/0 表示无数据
+     * @return 展示用字符串，无数据时返回 "--"
+     */
+    fun formatChargePower(power: Double?): String {
+        val v = power ?: return "--"
+        if (v <= 0.0) return "--"
+        val kw = if (v > 100.0) v / 1000.0 else v
+        return "${String.format("%.1f", kw)} kW"
+    }
+
+    /**
      * 格式化时间戳为日期字符串
      */
     fun formatDate(timestamp: Long): String {

@@ -6,6 +6,7 @@ import com.open.wuling.data.api.BleKeyResponse
 import com.open.wuling.data.api.CarStatusResponse
 import com.open.wuling.data.api.CheckStatusResponse
 import com.open.wuling.data.api.CommandResponse
+import com.open.wuling.data.api.ReserveChargeInfo
 import com.open.wuling.data.api.SearchCarResponse
 import com.open.wuling.data.api.TirePressureResponse
 import com.open.wuling.data.api.AuthorizeResponse
@@ -318,6 +319,68 @@ class VehicleRepository @Inject constructor(
             return@withContext Result.failure(APIError("请先配置 Access Token"))
         }
         api.queryBleKey(vin, userId)
+    }
+
+    // ==================== 循环预约充电 (v69) ====================
+
+    /** 查询当前循环预约充电设置（只读，不下发任何指令） */
+    suspend fun queryReserveCharge(vin: String): Result<ReserveChargeInfo> = withContext(Dispatchers.IO) {
+        if (!APIConfig.isConfigured) {
+            return@withContext Result.failure(APIError("请先配置 Access Token"))
+        }
+        api.queryReserveCharge(vin).mapCatching { resp ->
+            if (!resp.isSuccess) {
+                throw APIError(resp.errorMessage ?: resp.message ?: "查询预约充电失败(${resp.errorCode ?: "-"})")
+            }
+            resp.data ?: ReserveChargeInfo()
+        }
+    }
+
+    /**
+     * 设置循环预约充电。
+     * @param base 当前服务端设置，用于把 chargeLimit/chargeModel/chargeRequest/type
+     *             这几个语义未知的字段原样回传，避免臆造枚举值
+     */
+    suspend fun setReserveCharge(
+        vin: String,
+        startHour: String,
+        startMinute: String,
+        endHour: String,
+        endMinute: String,
+        base: ReserveChargeInfo?
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        if (!APIConfig.isConfigured) {
+            return@withContext Result.failure(APIError("请先配置 Access Token"))
+        }
+        api.setReserveCharge(
+            vin = vin,
+            startHour = startHour,
+            startMinute = startMinute,
+            endHour = endHour,
+            endMinute = endMinute,
+            chargeLimit = base?.chargeLimit,
+            chargeModel = base?.chargeModel,
+            chargeRequest = base?.chargeRequest,
+            type = base?.type
+        ).mapCatching { resp ->
+            if (!resp.isSuccess) {
+                throw APIError(resp.errorMessage ?: resp.message ?: "设置预约充电失败(${resp.errorCode ?: "-"})")
+            }
+            Unit
+        }
+    }
+
+    /** 取消循环预约充电 */
+    suspend fun cancelReserveCharge(vin: String): Result<Unit> = withContext(Dispatchers.IO) {
+        if (!APIConfig.isConfigured) {
+            return@withContext Result.failure(APIError("请先配置 Access Token"))
+        }
+        api.cancelReserveCharge(vin).mapCatching { resp ->
+            if (!resp.isSuccess) {
+                throw APIError(resp.errorMessage ?: resp.message ?: "取消预约充电失败(${resp.errorCode ?: "-"})")
+            }
+            Unit
+        }
     }
 
     private fun createFallbackVehicle(): Vehicle {

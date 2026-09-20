@@ -37,6 +37,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -200,6 +203,11 @@ fun DetailScreen(
                     DetailRow("电压", "${FormatUtils.formatIntValue(status.voltage)} V")
                     DetailRow("电流", "${FormatUtils.formatIntValue(status.current)} A")
                     DetailRow("充电状态", if (status.isCharging) "充电中" else "未充电")
+                    // v69：充电功率。仅在「充电中」或服务端确实回传了功率时展示，
+                    //      未充电时 chargePower 为空串 → null → 不显示该行，避免误导。
+                    if (status.isCharging || (status.chargePower ?: 0.0) > 0.0) {
+                        DetailRow("充电功率", FormatUtils.formatChargePower(status.chargePower))
+                    }
                     DetailRow("充电指示灯", if (status.vecChrgStsIndOn) "亮" else "灭")
                     DetailRow("OBC 温度", "${status.tmActTemp}°C")
                     DetailRow("OBC 电流", "${status.obcOtpCur} A")

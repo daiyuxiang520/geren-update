@@ -62,7 +62,10 @@ class VehicleStatusWidgetProvider : AppWidgetProvider() {
             val powerOn: Boolean?,
             val locked: Boolean?,
             val windowsClosed: Boolean?,
-            val trunkClosed: Boolean? = null
+            val trunkClosed: Boolean? = null,
+            // v69：充电中展示实时功率（未充电时 charging=false）
+            val charging: Boolean = false,
+            val chargePowerText: String? = null
         )
 
         // ============== 供 AppState 调用：App 内刷新成功后同步到桌面 ==============
@@ -82,6 +85,8 @@ class VehicleStatusWidgetProvider : AppWidgetProvider() {
                             s.windows.frontLeft || s.windows.frontRight ||
                                     s.windows.rearLeft || s.windows.rearRight))
                     .put("trunkClosed", !s.doors.trunk)
+                    .put("charging", s.isCharging)
+                    .put("chargePowerText", com.open.wuling.util.FormatUtils.formatChargePower(s.chargePower))
                 context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                     .edit()
                     .putString(KEY_DATA, json.toString())
@@ -169,7 +174,9 @@ class VehicleStatusWidgetProvider : AppWidgetProvider() {
                     powerOn = if (j.has("powerOn")) j.optBoolean("powerOn") else null,
                     locked = if (j.has("locked")) j.optBoolean("locked") else null,
                     windowsClosed = if (j.has("windowsClosed")) j.optBoolean("windowsClosed") else null,
-                    trunkClosed = if (j.has("trunkClosed")) j.optBoolean("trunkClosed") else null
+                    trunkClosed = if (j.has("trunkClosed")) j.optBoolean("trunkClosed") else null,
+                    charging = j.optBoolean("charging", false),
+                    chargePowerText = j.optString("chargePowerText", "").takeIf { it.isNotEmpty() && it != "--" }
                 )
             } else null
         } catch (e: Exception) {
@@ -225,11 +232,15 @@ class VehicleStatusWidgetProvider : AppWidgetProvider() {
                 views.setTextViewText(R.id.widget_fuel_text, if (fuel != null) "油量 $fuel%" else "油量 --")
                 views.setProgressBar(R.id.widget_fuel_bar, 100, fuel ?: 0, false)
 
-                // 右侧三行状态（带图标）: 上电/下电、已锁/未锁、车窗
-                val (powerText, powerColor) = when (snap?.powerOn) {
-                    true -> "⚡ 上电" to COLOR_OK
-                    false -> "🔌 下电" to COLOR_WARN
-                    null -> "--" to COLOR_NONE
+                // 右侧三行状态（带图标）: 上电/下电（充电中改为显示充电功率）、已锁/未锁、车窗
+                // v69：充电中优先展示充电功率，此时车辆必然下电，原来的「上电/下电」信息价值更低
+                val (powerText, powerColor) = when {
+                    snap?.charging == true -> "⚡ ${snap.chargePowerText ?: "充电中"}" to COLOR_OK
+                    // 兜底：vecChrgingSts 未置位但服务端回了功率，同样按充电展示
+                    !snap?.chargePowerText.isNullOrEmpty() -> "⚡ ${snap.chargePowerText}" to COLOR_OK
+                    snap?.powerOn == true -> "⚡ 上电" to COLOR_OK
+                    snap?.powerOn == false -> "🔌 下电" to COLOR_WARN
+                    else -> "--" to COLOR_NONE
                 }
                 views.setTextViewText(R.id.widget_power_text, powerText)
                 views.setTextColor(R.id.widget_power_text, powerColor)

@@ -128,6 +128,11 @@ class BleAutoLockManager(
 
     // auth random values
     private var authRandom2Local: Int = 0
+
+    /** v81：偏好订阅幂等标志，避免重复 initialize() 叠加 collector */
+    private val preferencesObserved = java.util.concurrent.atomic.AtomicBoolean(false)
+    /** v81：上一次观测到的「蓝牙自动连接」值，用于只在开关真正变化时动作 */
+    private var lastConnectEnabled: Boolean? = null
     private var authRandom1Remote: Int? = null
     private var authSessionKey: ByteArray? = null
     private var bleKeyBytes: ByteArray? = null
@@ -192,10 +197,11 @@ class BleAutoLockManager(
 
                     scope.launch {
                         // v79：断线自动重扫只取决于「蓝牙自动连接」，与自动解锁策略解耦
-                        if (preferences.connectEnabled.first() && isAuthenticated) {
+                        // v81：统一走 start()，让门控与日志集中在一处
+                        if (isAuthenticated) {
                             addLog("2秒后重新扫描")
                             delay(2000)
-                            startScanning()
+                            start()
                         }
                     }
                 }
@@ -534,10 +540,25 @@ class BleAutoLockManager(
     }
 
     private fun observePreferences() {
+        // v81：initialize() 可能被多次调用（冷启动 / 回前台 / 蓝牙开启），
+        // 重复订阅会叠加 collector，导致保活服务被反复启停。
+        if (!preferencesObserved.compareAndSet(false, true)) return
         scope.launch {
             // v79：保活服务跟随「蓝牙自动连接」，而非「自动解锁」策略
+            // v81：开关本身即时生效——打开即开始连接，关闭即停止（跳过首次回弹，避免与 initialize() 重复启动）
             preferences.connectEnabled.collect { enabled ->
+                val previous = lastConnectEnabled
+                lastConnectEnabled = enabled
                 updateForegroundService()
+                if (previous != null && previous != enabled) {
+                    if (enabled) {
+                        addLog("「蓝牙自动连接」已打开，开始连接")
+                        start()
+                    } else {
+                        addLog("「蓝牙自动连接」已关闭，停止连接")
+                        stop()
+                    }
+                }
             }
         }
         scope.launch {
@@ -649,7 +670,7 @@ class BleAutoLockManager(
                 val backoff = (SCAN_TIMEOUT + scanRetryCount * 2000L).coerceAtMost(30000L)
                 scanRetryCount++
                 addLog("扫描超时，${backoff}ms后重试")
-                handler.postDelayed({ scope.launch { startScanning() } }, backoff)
+                handler.postDelayed({ scope.launch { start() } }, backoff)
             }
         }, SCAN_TIMEOUT)
     }

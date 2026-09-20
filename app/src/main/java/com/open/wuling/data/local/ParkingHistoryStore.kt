@@ -35,7 +35,9 @@ object ParkingHistoryStore {
         /** 首次观测到该位置的时间（毫秒） */
         val firstSeen: Long,
         /** 最后一次仍在该位置的时间（毫秒） */
-        val lastSeen: Long
+        val lastSeen: Long,
+        /** 文字地点名（逆地理得到，可为空：未配置 Key / 网络失败 / 高速途经点不查） */
+        val name: String? = null
     )
 
     /** 记录一次观测。坐标缺失时静默跳过（接口偶发不返回经纬度，属正常） */
@@ -75,7 +77,8 @@ object ParkingHistoryStore {
                         lat = o.optDouble("lat", 0.0),
                         lon = o.optDouble("lon", 0.0),
                         firstSeen = o.optLong("first", 0L),
-                        lastSeen = o.optLong("last", 0L)
+                        lastSeen = o.optLong("last", 0L),
+                        name = o.optString("name", "").ifEmpty { null }
                     )
                 )
             }
@@ -89,16 +92,56 @@ object ParkingHistoryStore {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(KEY_POINTS).apply()
     }
 
+    // ==================== 地点名补全（逆地理） ====================
+
+    /**
+     * 仅对"停过且缺地名"的点做逆地理，避免高速途经点打爆高德配额。
+     */
+    private const val STAY_THRESHOLD_MS = 120_000L
+
+    private val writeLock = Any()
+
+    /**
+     * 该点是否需要补全地名：已停 ≥2 分钟且尚无 name。
+     * 与 [formatStayDuration] 的"途经(<60s)"语义区分：高速上连串跨 50m 新建的点停留≈0，全部被挡掉。
+     */
+    fun shouldEnrich(p: Point): Boolean = p.name == null && (p.lastSeen - p.firstSeen) >= STAY_THRESHOLD_MS
+
+    /**
+     * 纠偏(WGS84→GCJ-02) + 逆地理，返回文字地名；无 Key / 失败 / 坐标异常返回 null。
+     * 同步方法，调用方须在 IO 线程执行（如 `withContext(Dispatchers.IO)`）。
+     */
+    fun enrichPoint(context: Context, p: Point): String? {
+        val key = AmapKeyManager.getWeatherKey()
+        if (key.isBlank()) return null
+        val (gcjLat, gcjLon) = CoordConverter.convert(context, p.lat, p.lon)
+        val res = AmapGeoResolver.resolve(key, gcjLat, gcjLon, withWeather = false)
+        return res.address
+    }
+
+    /** 按坐标匹配写回 name（与列表顺序无关；并发写由 [writeLock] 保护） */
+    fun saveName(context: Context, p: Point, name: String) {
+        synchronized(writeLock) {
+            val points = load(context).toMutableList()
+            val idx = points.indexOfFirst { it.lat == p.lat && it.lon == p.lon }
+            if (idx >= 0 && points[idx].name == null) {
+                points[idx] = points[idx].copy(name = name)
+                save(context, points)
+            }
+        }
+    }
+
     private fun save(context: Context, points: List<Point>) {
         val arr = JSONArray()
         points.forEach { p ->
-            arr.put(
-                JSONObject()
-                    .put("lat", p.lat)
-                    .put("lon", p.lon)
-                    .put("first", p.firstSeen)
-                    .put("last", p.lastSeen)
-            )
+        arr.put(
+            JSONObject()
+                .put("lat", p.lat)
+                .put("lon", p.lon)
+                .put("first", p.firstSeen)
+                .put("last", p.lastSeen)
+                .put("name", p.name ?: "")
+        )
         }
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()

@@ -20,8 +20,8 @@ android {
         applicationId = "com.wuling.app.repack"
         minSdk = 26
         targetSdk = 36
-        versionCode = 80
-        versionName = "3.77.0"
+        versionCode = 81
+        versionName = "3.78.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -135,6 +135,13 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            // HiveMQ 依赖的 Netty 多个 jar 均携带这些文件，需排除避免合并冲突
+            excludes += "/META-INF/INDEX.LIST"
+            excludes += "/META-INF/io.netty.versions.properties"
+            excludes += "/META-INF/DEPENDENCIES"
+            excludes += "/META-INF/LICENSE*"
+            excludes += "/META-INF/NOTICE*"
+            excludes += "/META-INF/*.kotlin_module"
         }
         jniLibs {
             // 16KB 页大小（Android 15+ / Android 16 强制要求）：
@@ -177,6 +184,10 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
     implementation("com.google.code.gson:gson:2.11.0")
+
+    // MQTT 实时推送（v73 可配置框架）：HiveMQ 纯 JVM 客户端，支持 MQTT 3.1.1/5、非 TLS TCP 1883、
+    // 内置自动重连与异步回调，故障隔离在协程内，绝不让连接异常冒泡到 UI 线程。
+    implementation("com.hivemq:hivemq-mqtt-client:1.3.17")
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")

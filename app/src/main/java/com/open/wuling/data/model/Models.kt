@@ -98,7 +98,9 @@ data class VehicleStatus(
     val batteryTempMax: Int = 28,
     val voltage: Double = 350.0,
     val current: Double = 50.0,
-    val chargePower: Double = 6.6,
+    // v69：改为可空。服务端未充电时下发空串（""），并非 0，
+    //      原先默认值 6.6 会让「未充电」也显示一个假的 6.6kW。
+    val chargePower: Double? = null,
     val gearStatus: String = "P",
 
     // 灯光

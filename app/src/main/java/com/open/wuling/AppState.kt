@@ -1,12 +1,16 @@
 package com.open.wuling
 
+import android.bluetooth.BluetoothAdapter
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import com.open.wuling.BuildConfig
 import com.open.wuling.analytics.UmengAnalytics
@@ -17,8 +21,16 @@ import com.open.wuling.data.update.UpdateConfig
 import com.open.wuling.data.api.APIConfig
 import com.open.wuling.data.api.CommandResponse
 import com.open.wuling.data.local.BleAutoLockPreferences
+import com.open.wuling.data.local.UpdateChannelPreferences
 import com.open.wuling.data.api.BleKeyResponse
+import com.open.wuling.data.api.ReserveChargeInfo
+import com.open.wuling.data.mqtt.MqttConfig
+import com.open.wuling.data.mqtt.MqttConfigStore
+import com.open.wuling.data.mqtt.MqttConnectionState
+import com.open.wuling.data.mqtt.MqttMessage
+import com.open.wuling.data.mqtt.MqttRepository
 import com.open.wuling.data.model.ControlCommand
+import com.open.wuling.util.AppLogger
 import com.open.wuling.data.model.User
 import com.open.wuling.data.model.Vehicle
 import com.open.wuling.data.repository.VehicleRepository
@@ -32,6 +44,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -39,8 +53,16 @@ import javax.inject.Singleton
 class AppState @Inject constructor(
     private val vehicleRepository: VehicleRepository,
     private val tokenStore: TokenStore,
+    /** v70：加密凭据存储（自动重登用） */
+    private val credentialStore: com.open.wuling.data.local.CredentialStore,
+    /** v73：MQTT 实时推送仓库（可配置、容错不崩） */
+    private val mqttRepository: MqttRepository,
+    /** v73：MQTT 配置持久化 */
+    private val mqttConfigStore: MqttConfigStore,
     /** NFC 车控执行器（v67）：设置页与 NfcTriggerActivity 共用 */
     val nfcController: NfcCarController,
+    /** v75：更新通道偏好（稳定版 / 测试版） */
+    val updateChannelPrefs: UpdateChannelPreferences,
     @dagger.hilt.android.qualifiers.ApplicationContext private val context: Context
 ) {
     private val TAG = "AppState"
@@ -97,6 +119,93 @@ class AppState @Inject constructor(
 
     private val _commandResult = MutableStateFlow<CommandResult?>(null)
     val commandResult: StateFlow<CommandResult?> = _commandResult.asStateFlow()
+
+    // ============== 循环预约充电 (v69) ==============
+    // null = 尚未查询过；非 null 表示服务端当前设置（无预约时各字段为空串）
+    private val _reserveCharge = MutableStateFlow<ReserveChargeInfo?>(null)
+    val reserveCharge: StateFlow<ReserveChargeInfo?> = _reserveCharge.asStateFlow()
+
+    private val _reserveChargeLoading = MutableStateFlow(false)
+    val reserveChargeLoading: StateFlow<Boolean> = _reserveChargeLoading.asStateFlow()
+
+    // ============== MQTT 实时推送 (v73 可配置框架) ==============
+    /** 当前生效的 MQTT 配置（冷启动由 init 从 DataStore 载入并持续同步） */
+    private val _mqttConfig = MutableStateFlow(MqttConfig.DEFAULTS)
+    val mqttConfig: StateFlow<MqttConfig> = _mqttConfig.asStateFlow()
+    /** MQTT 连接状态（直连仓库，便于设置页实时展示） */
+    val mqttConnectionState: StateFlow<MqttConnectionState> = mqttRepository.connectionState
+    val mqttLastError: StateFlow<String?> = mqttRepository.lastError
+    val mqttLastMessageAt: StateFlow<Long> = mqttRepository.lastMessageAt
+    /** 收到推送触发刷新的节流时间戳（至少间隔 1s，防消息风暴把 REST 打爆） */
+    @Volatile
+    private var lastMqttRefreshAt = 0L
+
+    /** 查询当前循环预约充电设置（只读，不下发任何指令） */
+    fun loadReserveCharge() {
+        val vin = _selectedVehicle.value?.vin ?: return
+        if (vin.isBlank()) return
+        scope.launch {
+            _reserveChargeLoading.value = true
+            vehicleRepository.queryReserveCharge(vin)
+                .onSuccess { _reserveCharge.value = it }
+                .onFailure { e ->
+                    // 查询失败不打扰用户，只记录；UI 侧显示「未查询到预约信息」
+                    Log.w(TAG, "查询预约充电失败: ${e.message}")
+                    _reserveCharge.value = null
+                }
+            _reserveChargeLoading.value = false
+        }
+    }
+
+    /** 设置循环预约充电（起止时间 HH:mm 的时分拆字段） */
+    fun setReserveCharge(startHour: Int, startMinute: Int, endHour: Int, endMinute: Int) {
+        val vin = _selectedVehicle.value?.vin
+        if (vin.isNullOrBlank()) {
+            _commandResult.value = CommandResult(false, "未获取到车辆 VIN")
+            return
+        }
+        scope.launch {
+            _reserveChargeLoading.value = true
+            vehicleRepository.setReserveCharge(
+                vin = vin,
+                startHour = startHour.toString(),
+                startMinute = startMinute.toString(),
+                endHour = endHour.toString(),
+                endMinute = endMinute.toString(),
+                base = _reserveCharge.value
+            ).onSuccess {
+                _commandResult.value = CommandResult(
+                    true,
+                    "已设置预约充电 ${String.format("%02d:%02d", startHour, startMinute)} - ${String.format("%02d:%02d", endHour, endMinute)}"
+                )
+                loadReserveCharge()
+            }.onFailure { e ->
+                _commandResult.value = CommandResult(false, e.message ?: "设置预约充电失败")
+            }
+            _reserveChargeLoading.value = false
+        }
+    }
+
+    /** 取消循环预约充电 */
+    fun cancelReserveCharge() {
+        val vin = _selectedVehicle.value?.vin
+        if (vin.isNullOrBlank()) {
+            _commandResult.value = CommandResult(false, "未获取到车辆 VIN")
+            return
+        }
+        scope.launch {
+            _reserveChargeLoading.value = true
+            vehicleRepository.cancelReserveCharge(vin)
+                .onSuccess {
+                    _commandResult.value = CommandResult(true, "已取消预约充电")
+                    loadReserveCharge()
+                }
+                .onFailure { e ->
+                    _commandResult.value = CommandResult(false, e.message ?: "取消预约充电失败")
+                }
+            _reserveChargeLoading.value = false
+        }
+    }
 
     // BLE 无感控车相关
     @Volatile
@@ -187,7 +296,13 @@ class AppState @Inject constructor(
             }
         }
 
+        // v81：蓝牙被打开时补连（旧实现只在冷启动尝试一次，先开 App 后开蓝牙就永远不连）
+        registerBleStateReceiver()
+
         scope.launch {
+            // v73：持续同步 MQTT 配置到内存（冷启动从 DataStore 载入，设置页改动即时生效）
+            launch { mqttConfigStore.flow.collect { _mqttConfig.value = it } }
+
             // ① 先用上次缓存立刻显示（冷启动秒出数据，不等网络）
             loadVehicleCache()?.let { cached ->
                 if (_selectedVehicle.value == null) {
@@ -200,6 +315,9 @@ class AppState @Inject constructor(
             val savedToken = tokenStore.getToken()
             if (savedToken.isNotEmpty()) {
                 configure(savedToken)
+                // v81：BLE 自动连接与网络刷新并行——旧实现排在 3 次联网刷新之后，
+                // 地库无信号时联网请求挂起会把蓝牙一起拖住，表现为「从不自动连接」。
+                launch { autoStartBle() }
                 // ③ 静默刷新最新数据（有缓存时不再显示全屏 loading，避免遮挡已有内容）
                 val hasCache = _selectedVehicle.value != null
                 var loaded = false
@@ -215,13 +333,8 @@ class AppState @Inject constructor(
                 }
                 // 启动自动刷新
                 startAutoRefresh()
-                // 自动启动 BLE（如果已启用）
-                kotlinx.coroutines.delay(1000)
-                val isBleEnabled = bleAutoLockPreferences.enabled.first()
-                val hasMac = bleAutoLockPreferences.bleMac.first().isNotEmpty()
-                if (isBleEnabled && hasMac) {
-                    bleAutoLockManager?.initialize()
-                }
+                // v73：MQTT 实时推送——Token 就绪后按需建连（配置关闭则自动跳过）
+                connectMqtt()
             }
         }
 
@@ -276,6 +389,89 @@ class AppState @Inject constructor(
         }
     }
 
+    // ── v81：蓝牙自动连接触发点 ──────────────────────────────────────────
+    /** 手动断开后的补连抑制时长：避免「刚断开、切一下后台回来又连上」 */
+    private val MANUAL_DISCONNECT_SUPPRESS_MS = 10 * 60 * 1000L
+    private var lastManualDisconnectAt = 0L
+
+    private val bleStateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action != BluetoothAdapter.ACTION_STATE_CHANGED) return
+            if (intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR)
+                == BluetoothAdapter.STATE_ON
+            ) {
+                Log.d(TAG, "监听到蓝牙已开启，触发补连")
+                // 用户主动开蓝牙 = 明确想连，不受手动断开抑制窗口影响
+                ensureBleAutoConnect("（蓝牙开启）", respectManualDisconnect = false)
+            }
+        }
+    }
+
+    private fun registerBleStateReceiver() {
+        runCatching {
+            ContextCompat.registerReceiver(
+                appContext, bleStateReceiver,
+                IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED),
+                ContextCompat.RECEIVER_NOT_EXPORTED
+            )
+        }.onFailure { Log.w(TAG, "注册蓝牙状态监听失败: ${it.message}") }
+    }
+
+    /**
+     * 冷启动自动连接（v81）：与网络刷新并行执行。
+     * 旧实现排在最多 3 次联网刷新之后，地库无信号时联网挂起会把蓝牙一起拖住。
+     */
+    private suspend fun autoStartBle() {
+        val manager = bleAutoLockManager ?: return
+        if (!bleAutoLockPreferences.connectEnabled.first()) {
+            manager.addLog("蓝牙自动连接已关闭，跳过自动启动")
+            return
+        }
+        // 给蓝牙适配器一点就绪时间（冷启动刚拿到 Adapter 时偶发 isEnabled=false）
+        kotlinx.coroutines.delay(600)
+        if (bleAutoLockPreferences.bleMac.first().isEmpty()) {
+            manager.addLog("本地无蓝牙钥匙，先向服务器获取")
+            runCatching { fetchAndStoreBleKey() }
+                .onFailure { manager.addLog("获取蓝牙钥匙失败: ${it.message}") }
+        }
+        if (bleAutoLockPreferences.bleMac.first().isNotEmpty()) {
+            manager.initialize()
+        } else {
+            manager.addLog("仍未取到蓝牙钥匙，放弃自动连接（可到设置页手动获取）")
+        }
+    }
+
+    /**
+     * 补连入口（v81）：App 回前台 / 蓝牙开启时调用。
+     * 幂等 —— 正在扫描、正在连接或已连接时直接返回，绝不打断进行中的握手。
+     */
+    fun ensureBleAutoConnect(reason: String = "", respectManualDisconnect: Boolean = true) {
+        val manager = bleAutoLockManager ?: return
+        scope.launch {
+            if (!bleAutoLockPreferences.connectEnabled.first()) return@launch
+            val sinceManual = System.currentTimeMillis() - lastManualDisconnectAt
+            if (respectManualDisconnect && sinceManual < MANUAL_DISCONNECT_SUPPRESS_MS) {
+                manager.addLog(
+                    "补连$reason 跳过：${(MANUAL_DISCONNECT_SUPPRESS_MS - sinceManual) / 1000}s 前刚手动断开"
+                )
+                return@launch
+            }
+            when (manager.connectionState.value) {
+                is BleAutoLockManager.ConnectionState.Connected,
+                is BleAutoLockManager.ConnectionState.Connecting,
+                is BleAutoLockManager.ConnectionState.Scanning -> return@launch
+                else -> Unit
+            }
+            if (bleAutoLockPreferences.bleMac.first().isEmpty()) {
+                manager.addLog("补连$reason：本地无蓝牙钥匙，先向服务器获取")
+                runCatching { fetchAndStoreBleKey() }
+                if (bleAutoLockPreferences.bleMac.first().isEmpty()) return@launch
+            }
+            manager.addLog("补连$reason：启动蓝牙扫描")
+            manager.initialize()
+        }
+    }
+
     fun toggleBleConnection() {
         val manager = bleAutoLockManager ?: return
         val currentState = manager.connectionState.value
@@ -284,7 +480,9 @@ class AppState @Inject constructor(
             if (currentState is BleAutoLockManager.ConnectionState.Connected) {
                 Log.d(TAG, "Disconnecting BLE")
                 manager.addLog("断开蓝牙连接")
-                bleAutoLockPreferences.setEnabled(false)
+                // v79：断开时不再改写「自动解锁」策略开关（旧实现会把开关关掉，导致想再连必须重开）
+                // v81：记录手动断开时间，短时间内不被「回前台补连」拉回来
+                lastManualDisconnectAt = System.currentTimeMillis()
                 manager.destroy()
             } else {
                 Log.d(TAG, "Connecting BLE")
@@ -353,7 +551,6 @@ class AppState @Inject constructor(
                                 masterKey = data.masterKey ?: "",
                                 vin = data.vin ?: ""
                             )
-                            bleAutoLockPreferences.setEnabled(true)
                             manager.initialize()
                         } else {
                             val errorMsg = response?.errorMessage ?: "获取蓝牙钥匙失败"
@@ -373,7 +570,6 @@ class AppState @Inject constructor(
                 } else {
                     Log.d(TAG, "MAC already exists, enabling BLE")
                     manager.addLog("使用已保存的 MAC 地址")
-                    bleAutoLockPreferences.setEnabled(true)
                     manager.initialize()
                 }
             }
@@ -535,16 +731,42 @@ class AppState @Inject constructor(
 
                 // v63：停车记录——本地观测式记录，同一位置只续期、移动过才新增
                 com.open.wuling.data.local.ParkingHistoryStore.record(context, finalVehicle)
-            }.onFailure { error ->
-                _errorMessage.value = error.message
-                // 埋点：App 主动刷新车辆状态失败
-                UmengAnalytics.event(appContext, "refresh_status", mapOf("result" to "fail"))
+            }
+
+            // v70：重试成功时以重试结果为准
+            var finalSuccess = fetchResult.isSuccess
+            fetchResult.onFailure { error ->
+                // 会话被顶（500009）→ 用保存的凭据静默重登，成功后重试一次刷新
+                if (isSessionExpired(error) && silentRelogin()) {
+                    Log.i(TAG, "重登成功，重试刷新车况")
+                    val retry = if (isQuick) {
+                        vehicleRepository.fetchDefaultVehicleStatusQuick()
+                    } else {
+                        vehicleRepository.fetchDefaultVehicleStatus()
+                    }
+                    retry.onSuccess { apiVehicle ->
+                        _selectedVehicle.value = apiVehicle
+                        updateVehicleFromAPI(apiVehicle)
+                        saveVehicleCache(apiVehicle)
+                        com.open.wuling.widget.VehicleStatusWidgetProvider.saveCacheAndPush(context, apiVehicle)
+                        _errorMessage.value = null
+                        finalSuccess = true
+                        UmengAnalytics.event(appContext, "refresh_status", mapOf("result" to "success", "quick" to isQuick.toString(), "relogin" to "true"))
+                    }.onFailure { e2 ->
+                        _errorMessage.value = e2.message
+                        UmengAnalytics.event(appContext, "refresh_status", mapOf("result" to "fail"))
+                    }
+                } else {
+                    _errorMessage.value = error.message
+                    // 埋点：App 主动刷新车辆状态失败
+                    UmengAnalytics.event(appContext, "refresh_status", mapOf("result" to "fail"))
+                }
             }
 
             if (showLoading) {
                 _isLoading.value = false
             }
-            return fetchResult.isSuccess
+            return finalSuccess
     }
 
     private fun fetchAndApplyTirePressure(vin: String) {
@@ -579,6 +801,40 @@ class AppState @Inject constructor(
         }
     }
 
+    /** v70：指令分发提取为独立函数，供首次执行与会话过期重发共用 */
+    private suspend fun runCommand(command: ControlCommand, vin: String): Result<*> = when (command) {
+        ControlCommand.LOCK -> vehicleRepository.controlDoorLock(vin, 1)
+        ControlCommand.UNLOCK -> vehicleRepository.controlDoorLock(vin, 0)
+        ControlCommand.CLIMATE_ON -> vehicleRepository.controlAC(mapOf(
+            "vin" to vin,
+            "accOnOff" to "1",
+            "status" to "1",
+            "temperature" to "24",
+            "blowerLvl" to "3",
+            "duration" to "10"
+        ))
+        ControlCommand.CLIMATE_OFF -> vehicleRepository.controlAC(mapOf(
+            "vin" to vin,
+            "accOnOff" to "0",
+            "status" to "0"
+        ))
+        ControlCommand.FLASH -> vehicleRepository.sendCommand("flash")
+        ControlCommand.HONK -> vehicleRepository.sendCommand("honk")
+        ControlCommand.TRUNK -> vehicleRepository.sendCommand("trunk")
+        ControlCommand.FIND_CAR -> vehicleRepository.searchCar(vin)
+        // v68 修复：车窗 status 方向与服务端相反（实测点「关窗」会开窗）。
+        // 服务端约定与门锁一致：0 = 打开类动作、1 = 关闭类动作，
+        // 故开窗=0、关窗=1（此前写反）。
+        ControlCommand.WINDOW_OPEN -> vehicleRepository.controlWindow(vin, 0)
+        ControlCommand.WINDOW_CLOSE -> vehicleRepository.controlWindow(vin, 1)
+        ControlCommand.IGNITION -> vehicleRepository.authorizeIgnition(vin)
+        // v69：预约充电已实现，入口在「详情」页（需要选择起止时间，不是一个瞬时指令），
+        //      首页快捷按钮仅做引导，避免误触直接下发。
+        ControlCommand.CHARGE_RESERVE -> Result.failure<Any>(
+            com.open.wuling.data.api.APIError("请在「详情」页设置预约充电")
+        )
+    }
+
     fun executeCommand(command: ControlCommand) {
         if (!APIConfig.isConfigured) {
             _errorMessage.value = "请先配置 Access Token"
@@ -599,36 +855,7 @@ class AppState @Inject constructor(
                 return@launch
             }
 
-            val result = when (command) {
-                ControlCommand.LOCK -> vehicleRepository.controlDoorLock(vehicle.vin, 1)
-                ControlCommand.UNLOCK -> vehicleRepository.controlDoorLock(vehicle.vin, 0)
-                ControlCommand.CLIMATE_ON -> vehicleRepository.controlAC(mapOf(
-                    "vin" to vehicle.vin,
-                    "accOnOff" to "1",
-                    "status" to "1",
-                    "temperature" to "24",
-                    "blowerLvl" to "3",
-                    "duration" to "10"
-                ))
-                ControlCommand.CLIMATE_OFF -> vehicleRepository.controlAC(mapOf(
-                    "vin" to vehicle.vin,
-                    "accOnOff" to "0",
-                    "status" to "0"
-                ))
-                ControlCommand.FLASH -> vehicleRepository.sendCommand("flash")
-                ControlCommand.HONK -> vehicleRepository.sendCommand("honk")
-                ControlCommand.TRUNK -> vehicleRepository.sendCommand("trunk")
-                ControlCommand.FIND_CAR -> vehicleRepository.searchCar(vehicle.vin)
-                // v68 修复：车窗 status 方向与服务端相反（实测点「关窗」会开窗）。
-                // 服务端约定与门锁一致：0 = 打开类动作、1 = 关闭类动作，
-                // 故开窗=0、关窗=1（此前写反）。
-                ControlCommand.WINDOW_OPEN -> vehicleRepository.controlWindow(vehicle.vin, 0)
-                ControlCommand.WINDOW_CLOSE -> vehicleRepository.controlWindow(vehicle.vin, 1)
-                ControlCommand.IGNITION -> vehicleRepository.authorizeIgnition(vehicle.vin)
-                ControlCommand.CHARGE_RESERVE -> Result.failure(
-                    com.open.wuling.data.api.APIError("该功能暂未接入，请使用官方App设置预约充电")
-                )
-            }
+            val result = runCommand(command, vehicle.vin)
 
             result.onSuccess { 
                 updateLocalState(command)
@@ -653,6 +880,34 @@ class AppState @Inject constructor(
                 kotlinx.coroutines.delay(5000)
                 refreshVehicleStatus(preserveLock = preserveLockState, preserveClimate = preserveClimateState, showLoading = false)
             }.onFailure { error ->
+                // v70：会话被顶（500009）→ 静默重登后自动重发一次指令，用户无感
+                if (isSessionExpired(error) && silentRelogin()) {
+                    val vehicle = _selectedVehicle.value
+                    if (vehicle != null) {
+                        val retry = runCommand(command, vehicle.vin)
+                        if (retry.isSuccess) {
+                            updateLocalState(command)
+                            _commandResult.value = CommandResult(
+                                success = true,
+                                message = "${command.displayName}成功"
+                            )
+                            _isLoading.value = false
+                            UmengAnalytics.event(
+                                appContext, "remote_command",
+                                mapOf("command" to command.name, "result" to "success", "relogin" to "true")
+                            )
+                            kotlinx.coroutines.delay(5000)
+                            refreshVehicleStatus(showLoading = false)
+                            return@launch
+                        }
+                        _commandResult.value = CommandResult(
+                            success = false,
+                            message = retry.exceptionOrNull()?.message ?: "操作失败"
+                        )
+                        _isLoading.value = false
+                        return@launch
+                    }
+                }
                 _commandResult.value = CommandResult(
                     success = false,
                     message = error.message ?: "操作失败"
@@ -691,7 +946,15 @@ class AppState @Inject constructor(
         scope.launch {
             vehicleRepository.loginLlb(mobile.trim(), password)
                 .onSuccess { token ->
-                    saveAndConfigureToken(token)
+                    // v70：先等 Token 与凭据全部落盘，再提示成功。
+                    // 此前 saveToken 是异步 launch，用户看到「登录成功」后立刻杀进程，
+                    // DataStore 写盘未完成 → 重进后 token 为空 → 表现为「退出重进就不行」。
+                    tokenStore.saveToken(token)
+                    configure(token)
+                    // 加密保存凭据，供 token 失效（被官方 App/其它端顶掉）时自动重登
+                    credentialStore.save(mobile.trim(), password)
+                    refreshVehicleStatus()
+                    startAutoRefresh()
                     onResult(true, "登录成功，Token 已自动保存")
                     // 埋点：登录成功（手机号脱敏）
                     UmengAnalytics.event(
@@ -719,6 +982,69 @@ class AppState @Inject constructor(
         }
     }
 
+    // ============== v70：会话过期自动重登 ==============
+    // 服务端单点登录：同一账号在任何一端（官方 App 等）重新登录，都会把本 App 的 token 顶失效。
+    // 检测到 SessionExpiredError 且本地有加密凭据时，静默重登自愈，用户无感。
+    private val reloginMutex = Mutex()
+    private var lastReloginAt = 0L
+
+    // 设置页开关（响应式）
+    private val _autoReloginEnabled = MutableStateFlow(credentialStore.autoReloginEnabled)
+    val autoReloginEnabled: StateFlow<Boolean> = _autoReloginEnabled.asStateFlow()
+
+    private val _hasSavedCredentials = MutableStateFlow(credentialStore.hasCredentials())
+    val hasSavedCredentials: StateFlow<Boolean> = _hasSavedCredentials.asStateFlow()
+
+    fun setAutoReloginEnabled(enabled: Boolean) {
+        credentialStore.autoReloginEnabled = enabled
+        _autoReloginEnabled.value = enabled
+    }
+
+    /** 清除已保存的登录凭据（设置页入口；下次登录会重新保存） */
+    fun clearSavedCredentials() {
+        credentialStore.clear()
+        _hasSavedCredentials.value = false
+        _commandResult.value = CommandResult(true, "已清除保存的登录凭据")
+    }
+
+    /**
+     * 静默重登。加锁防并发（30 秒轮询 + 手动操作可能同时触发）；
+     * 60 秒内只允许尝试一次，避免凭据错误时无限循环打登录接口。
+     * @return 是否重登成功
+     */
+    private suspend fun silentRelogin(): Boolean = reloginMutex.withLock {
+        if (!credentialStore.autoReloginEnabled) return@withLock false
+        val now = System.currentTimeMillis()
+        if (now - lastReloginAt < 60_000L) return@withLock false
+        lastReloginAt = now
+
+        val cred = credentialStore.load() ?: run {
+            Log.w(TAG, "token 失效但本地无凭据，无法自动重登")
+            return@withLock false
+        }
+        Log.i(TAG, "token 已失效，尝试静默重登: ${UmengAnalytics.maskPhone(cred.first)}")
+        val result = vehicleRepository.loginLlb(cred.first, cred.second)
+        result.onSuccess { token ->
+            tokenStore.saveToken(token)
+            configure(token)
+            // v73：token 刷新后，用新 token 重建 MQTT 连接（凭证接口鉴权依赖最新 token）
+            connectMqtt()
+            Log.i(TAG, "静默重登成功，token 已刷新")
+            UmengAnalytics.event(appContext, "auto_relogin", mapOf("result" to "success"))
+        }.onFailure { e ->
+            Log.w(TAG, "静默重登失败: ${e.message}")
+            UmengAnalytics.event(
+                appContext, "auto_relogin",
+                mapOf("result" to "fail", "reason" to (e.message ?: "").take(80))
+            )
+        }
+        result.isSuccess
+    }
+
+    /** 是否为会话过期类错误（500009） */
+    private fun isSessionExpired(error: Throwable?): Boolean =
+        error is com.open.wuling.data.api.SessionExpiredError
+
     fun saveAndConfigureToken(token: String) {
         configure(token)
         scope.launch {
@@ -727,6 +1053,8 @@ class AppState @Inject constructor(
             refreshVehicleStatus()
             // 启动自动刷新
             startAutoRefresh()
+            // v73：MQTT 实时推送——Token 就绪后按需建连
+            connectMqtt()
         }
     }
 
@@ -740,10 +1068,76 @@ class AppState @Inject constructor(
         _user.value = User(id = "", name = "用户", phone = "")
         // 停止自动刷新
         stopAutoRefresh()
+        // v73：退出登录同时断开 MQTT
+        mqttRepository.disconnect()
         scope.launch {
             tokenStore.clearToken()
+            // v70：退出登录同时清除自动重登凭据
+            credentialStore.clear()
         }
         Log.d(TAG, "用户已退出登录")
+    }
+
+    // ============== MQTT 实时推送 (v73 可配置框架) ==============
+
+    /**
+     * 按当前配置建连/重连（配置关闭则不连）。
+     * 在 IO 协程读取最新配置并触发仓库连接；回调 onMqttMessage 处理推送。
+     */
+    fun connectMqtt() {
+        scope.launch {
+            val cfg = mqttConfigStore.get()
+            _mqttConfig.value = cfg
+            if (!cfg.enabled) {
+                mqttRepository.disconnect()
+                return@launch
+            }
+            if (!APIConfig.isConfigured) {
+                AppLogger.w(TAG, "MQTT 未配置 Token，跳过建连")
+                return@launch
+            }
+            val vin = _selectedVehicle.value?.vin ?: ""
+            // v74：官方 clientId 规则为 {vin}_{手机号后4位}，从已保存的登录凭证取手机号
+            val phone = runCatching { credentialStore.load()?.first.orEmpty() }.getOrDefault("")
+            mqttRepository.connect(cfg, APIConfig.accessToken, vin, phone) { onMqttMessage(it) }
+        }
+    }
+
+    /** 主动断连 */
+    fun disconnectMqtt() {
+        mqttRepository.disconnect()
+    }
+
+    /** 保存并应用整份 MQTT 配置（设置页「保存」调用） */
+    fun setMqttConfig(cfg: MqttConfig) {
+        scope.launch {
+            mqttConfigStore.save(cfg)
+            _mqttConfig.value = cfg
+            if (cfg.enabled) connectMqtt() else mqttRepository.disconnect()
+        }
+    }
+
+    /** 仅切换总开关（开/关即时生效） */
+    fun setMqttEnabled(enabled: Boolean) {
+        scope.launch {
+            setMqttConfig(mqttConfigStore.get().copy(enabled = enabled))
+        }
+    }
+
+    /**
+     * MQTT 推送回调（在仓库 IO 协程执行）。
+     * 默认行为：收到任意推送即触发一次「已验证的 REST 车况刷新」（节流 1s），
+     * 实现「车况一变立刻变」，无需解析 protobuf(SgmwAppCarStatus)。
+     * 原始报文已由仓库写入调试日志（tag=MQTT），用户真机调参后可在本处补全直解析。
+     */
+    private fun onMqttMessage(msg: MqttMessage) {
+        val cfg = _mqttConfig.value
+        if (!cfg.forceRefreshOnMessage || !APIConfig.isConfigured) return
+        val now = System.currentTimeMillis()
+        if (now - lastMqttRefreshAt > 1000L) {
+            lastMqttRefreshAt = now
+            refreshVehicleStatus(isQuick = true, showLoading = false)
+        }
     }
 
     private fun updateLocalState(command: ControlCommand) {
@@ -924,14 +1318,22 @@ class AppState @Inject constructor(
     // ============== App 自动更新逻辑 ==============
 
     /**
-     * 检查更新：拉取 update.json，若远端 versionCode 大于本地则弹出更新对话框。
+     * 检查更新：拉取版本清单，若远端 versionCode 大于本地则弹出更新对话框。
+     *
+     * v75：清单地址按「更新通道」选取 ——
+     *  - 稳定版 → `update.json`
+     *  - 测试版 → `update-beta.json`
+     * 两条轨道各自维护版本号，互不干扰（详见 UpdateConfig.UPDATE_JSON_URLS_BETA）。
+     *
      * @param manual 是否由用户手动触发（手动时若无更新弹 Toast 提示已是最新）
      */
     fun checkAppUpdate(manual: Boolean = false) {
         scope.launch {
+            // 读取当前通道（默认 stable）；切换通道后下次检查更新即生效（手动检查无需重启）
+            val channel = updateChannelPrefs.channelFlow.first()
             // 传入本地版本号：并发拉取时一旦有源返回更高版本即可提前返回（快速通道）
             val info = UpdateChecker.fetchUpdateInfo(
-                UpdateConfig.UPDATE_JSON_URLS,
+                UpdateConfig.updateJsonUrls(channel),
                 BuildConfig.VERSION_CODE
             )
             if (info != null && info.versionCode > BuildConfig.VERSION_CODE && info.apkUrl.isNotBlank()) {
@@ -946,19 +1348,22 @@ class AppState @Inject constructor(
                         "result" to "has_update",
                         "manual" to manual.toString(),
                         "local" to BuildConfig.VERSION_NAME,
-                        "remote" to info.versionName
+                        "remote" to info.versionName,
+                        "channel" to channel
                     )
                 )
             } else if (manual) {
+                val tail = if (channel == UpdateChannelPreferences.CHANNEL_BETA) "·测试版通道" else ""
                 Toast.makeText(
                     appContext,
-                    "已是最新版本 (v${BuildConfig.VERSION_NAME})",
+                    "已是最新版本 (v${BuildConfig.VERSION_NAME}) $tail".trim(),
                     Toast.LENGTH_SHORT
                 ).show()
                 UmengAnalytics.event(
                     appContext,
                     "check_update",
-                    mapOf("result" to "latest", "manual" to "true", "local" to BuildConfig.VERSION_NAME)
+                    mapOf("result" to "latest", "manual" to "true", "local" to BuildConfig.VERSION_NAME,
+                        "channel" to channel)
                 )
             }
         }

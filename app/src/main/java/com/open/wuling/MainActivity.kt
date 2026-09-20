@@ -88,6 +88,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var bleAutoLockPreferences: BleAutoLockPreferences
 
     @Inject lateinit var nfcController: NfcCarController
+    @Inject lateinit var appState: AppState
 
     private var pendingPermissionType: PermissionType? = null
     private var onPermissionResult: ((Boolean) -> Unit)? = null
@@ -143,6 +144,12 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.RESUMED) {
                 nfcController.bindingPendingFlow.collect { setNfcDispatch(it) }
+            }
+        }
+        // v81：回到前台时补连蓝牙（旧实现只在冷启动尝试一次，从后台切回来不再重连）
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                appState.ensureBleAutoConnect("（回到前台）")
             }
         }
 

@@ -149,6 +149,17 @@ fun LocationScreen(
     }
     LaunchedEffect(Unit) {
         parkingPoints = com.open.wuling.data.local.ParkingHistoryStore.load(context)
+        // 懒加载补全地名：仅对"停过且缺地名"的点逆地理，写回后重新读取刷新列表
+        withContext(Dispatchers.IO) {
+            val todo = parkingPoints.filter { com.open.wuling.data.local.ParkingHistoryStore.shouldEnrich(it) }
+            if (todo.isNotEmpty()) {
+                todo.forEach { p ->
+                    com.open.wuling.data.local.ParkingHistoryStore.enrichPoint(context, p)
+                        ?.let { com.open.wuling.data.local.ParkingHistoryStore.saveName(context, p, it) }
+                }
+                parkingPoints = com.open.wuling.data.local.ParkingHistoryStore.load(context)
+            }
+        }
     }
 
     // ===== 地址 + 天气：单协程串行解析（v33 重构）=====
@@ -1022,9 +1033,10 @@ private fun ParkingHistoryCard(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = String.format(Locale.US, "%.4f, %.4f", p.lat, p.lon),
+                            text = p.name ?: String.format(Locale.US, "%.4f, %.4f", p.lat, p.lon),
                             fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
                         )
                     }
                     Spacer(modifier = Modifier.width(8.dp))

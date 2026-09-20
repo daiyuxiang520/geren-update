@@ -370,5 +370,43 @@ data class BleKeyData(
     @SerializedName("vin") val vin: String? = null
 )
 
+// ============== 循环预约充电 (v69) ==============
+// 字段来源：官方 App（com.cloudy.linglingbang）dex 中的 ReserveChargeStatusInfoBean，
+//          并已用线上只读查询 /car/cycle/charge/query 闭环验证，字段完全一致。
+// 全部为 String：服务端下发的是字符串型（如 startHour="22"），无预约时为空串 ""。
+//
+// 注意：chargeLimit / chargeModel / chargeRequest / type 的枚举语义官方代码里未明确
+//      （官方日志里仅见 reserveChargePowerUpLimit 等字样，dex 结构损坏无法继续下挖），
+//      因此本 App 提交预约时**原样回传**服务端当前值，绝不臆造枚举。
+data class ReserveChargeInfo(
+    @SerializedName("startHour") val startHour: String? = null,
+    @SerializedName("startMinute") val startMinute: String? = null,
+    @SerializedName("endHour") val endHour: String? = null,
+    @SerializedName("endMinute") val endMinute: String? = null,
+    @SerializedName("chargeLimit") val chargeLimit: String? = null,
+    @SerializedName("chargeModel") val chargeModel: String? = null,
+    @SerializedName("chargeRequest") val chargeRequest: String? = null,
+    @SerializedName("type") val type: String? = null,
+    @SerializedName("collectTime") val collectTime: String? = null
+) {
+    /** 是否已设置有效预约（起止时间齐全才算） */
+    val hasReservation: Boolean
+        get() = !startHour.isNullOrBlank() && !startMinute.isNullOrBlank() &&
+                !endHour.isNullOrBlank() && !endMinute.isNullOrBlank()
+
+    fun startTimeText(): String = hhmm(startHour, startMinute)
+    fun endTimeText(): String = hhmm(endHour, endMinute)
+
+    private fun hhmm(h: String?, m: String?): String {
+        val hh = h?.trim()?.takeIf { it.isNotEmpty() } ?: return "--:--"
+        val mm = m?.trim()?.takeIf { it.isNotEmpty() } ?: "00"
+        return "${hh.padStart(2, '0')}:${mm.padStart(2, '0')}"
+    }
+}
+
 // ============== API Error ==============
-class APIError(message: String) : Exception(message)
+// open：允许子类携带语义（如会话过期），调用方按类型而非字符串判断
+open class APIError(message: String) : Exception(message)
+
+/** v70：服务端 500009 —— token 已失效（被其它端登录顶掉/过期）。触发自动重登。 */
+class SessionExpiredError(message: String) : APIError(message)

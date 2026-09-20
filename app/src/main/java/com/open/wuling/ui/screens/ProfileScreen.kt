@@ -5,6 +5,7 @@ import com.open.wuling.analytics.UmengPageView
 import android.content.Intent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,6 +31,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.ElectricBolt
 import androidx.compose.material.icons.filled.Info
@@ -109,6 +111,8 @@ import com.open.wuling.ui.components.DetailRow
 import com.open.wuling.ui.components.NotificationSettingsSheet
 import com.open.wuling.ui.components.NfcSettingsSheet
 import com.open.wuling.ui.components.OemKeepAliveSheet
+import com.open.wuling.ui.components.MqttSettingsSheet
+import com.open.wuling.data.mqtt.MqttConnectionState
 import com.open.wuling.ui.components.PrivacySettingsSheet
 import com.open.wuling.ui.theme.LocalCardAlpha
 import com.open.wuling.util.FormatUtils
@@ -127,7 +131,16 @@ fun ProfileScreen(
     val tokenConfigured by viewModel.appState.tokenConfigured.collectAsState()
     // NFC 车控启用状态（v67）
     val nfcEnabled by viewModel.appState.nfcController.enabledFlow.collectAsState()
+    // v73：MQTT 实时推送配置与连接状态（设置页入口展示）
+    val mqttCfg by viewModel.appState.mqttConfig.collectAsState()
+    val mqttState by viewModel.appState.mqttConnectionState.collectAsState()
+    // v75：当前 App 更新通道（稳定版 / 测试版）
+    val updateChannel by viewModel.appState.updateChannelPrefs.channelFlow.collectAsState(
+        initial = com.open.wuling.data.local.UpdateChannelPreferences.CHANNEL_STABLE
+    )
     val scrollState = rememberScrollState()
+
+    var showUpdateChannelDialog by remember { mutableStateOf(false) }
 
     var showTokenDialog by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
@@ -137,6 +150,7 @@ fun ProfileScreen(
     var showNotificationSheet by remember { mutableStateOf(false) }
     var showPrivacySheet by remember { mutableStateOf(false) }
     var showNfcSheet by remember { mutableStateOf(false) }
+    var showMqttSheet by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
     var showVehicleInfo by remember { mutableStateOf(false) }
     var tokenInput by remember { mutableStateOf("") }
@@ -342,9 +356,17 @@ fun ProfileScreen(
                 SettingsItem(
                     icon = Icons.Filled.SystemUpdate,
                     title = "检查更新",
-                    subtitle = "当前版本 v${BuildConfig.VERSION_NAME} · 多源加速",
+                    subtitle = "当前版本 v${BuildConfig.VERSION_NAME}${updateChannelTail(updateChannel)} · 多源加速",
                     iconColor = PrimaryGreen,
                     onClick = { viewModel.appState.checkAppUpdate(manual = true) }
+                )
+
+                Divider(color = MaterialTheme.colorScheme.surfaceVariant)
+
+                // 更新通道（v75：稳定版 / 测试版）
+                UpdateChannelItem(
+                    currentChannel = updateChannel,
+                    onChannelChange = { viewModel.appState.updateChannelPrefs.setChannel(it) }
                 )
 
                 Divider(color = MaterialTheme.colorScheme.surfaceVariant)
@@ -419,6 +441,24 @@ fun ProfileScreen(
                     iconColor = PrimaryOrange,
                     showCheck = nfcEnabled,
                     onClick = { showNfcSheet = true }
+                )
+
+                Divider(color = MaterialTheme.colorScheme.surfaceVariant)
+
+                // v73：MQTT 实时推送设置入口
+                SettingsItem(
+                    icon = Icons.Filled.Cloud,
+                    title = "MQTT 实时推送",
+                    subtitle = if (!mqttCfg.enabled) "未启用" else when (mqttState) {
+                        MqttConnectionState.SUBSCRIBED -> "已订阅"
+                        MqttConnectionState.CONNECTED -> "已连接"
+                        MqttConnectionState.ERROR -> "连接错误"
+                        MqttConnectionState.CONNECTING, MqttConnectionState.RECONNECTING -> "连接中…"
+                        else -> "已启用"
+                    },
+                    iconColor = PrimaryGreen,
+                    showCheck = mqttCfg.enabled && mqttState.isActive,
+                    onClick = { showMqttSheet = true }
                 )
             }
         }
@@ -502,6 +542,57 @@ fun ProfileScreen(
                         text = BuildConfig.VERSION_NAME,
                         fontSize = 15.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // v70：自动重登设置（token 被官方 App 等其它端顶掉时自愈）
+        val autoRelogin by viewModel.appState.autoReloginEnabled.collectAsState()
+        val hasCred by viewModel.appState.hasSavedCredentials.collectAsState()
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)),
+            shape = RoundedCornerShape(14.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "自动重新登录",
+                        fontSize = 15.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = if (hasCred) "已保存登录凭据（Keystore 加密）；Token 被其它设备顶掉时自动恢复"
+                        else "登录后自动保存凭据，Token 失效时自动恢复登录",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = autoRelogin,
+                    onCheckedChange = { viewModel.appState.setAutoReloginEnabled(it) }
+                )
+            }
+            if (hasCred) {
+                TextButton(
+                    onClick = { viewModel.appState.clearSavedCredentials() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 4.dp)
+                ) {
+                    Text(
+                        text = "清除已保存的登录凭据",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -795,6 +886,14 @@ fun ProfileScreen(
         controller = viewModel.appState.nfcController,
         onClose = { showNfcSheet = false }
     )
+
+    // MQTT 实时推送（v73：可配置 broker / 凭证接口 / 订阅 topic）
+    if (showMqttSheet) {
+        MqttSettingsSheet(
+            appState = viewModel.appState,
+            onClose = { showMqttSheet = false }
+        )
+    }
 }
 
 /**
@@ -1497,3 +1596,109 @@ private fun SettingsItem(
 /** 本项目开源仓库地址（App 内「关于我们」展示并跳转） */
 private const val OPEN_SOURCE_REPO_URL = "https://github.com/daiyuxiang520/geren-update"
 private const val OPEN_SOURCE_REPO_DISPLAY = "github.com/daiyuxiang520/geren-update"
+
+/**
+ * 版本号后缀：测试版通道时显式标注，避免用户误以为装的是正式版。
+ * 稳定版通道不追加任何后缀，保持原样。
+ */
+private fun updateChannelTail(channel: String): String =
+    if (channel == com.open.wuling.data.local.UpdateChannelPreferences.CHANNEL_BETA) " · 测试版" else ""
+
+/**
+ * 「更新通道」设置项（v75）：稳定版 / 测试版 二选一。
+ *
+ * 两条发布轨道各自独立（详见 UpdateConfig.UPDATE_JSON_URLS_BETA）：
+ *  - 稳定版：正式发布的版本，面向全部用户；
+ *  - 测试版：灰度验证 / 问题排查用，可能不稳定，用户自愿选择。
+ *
+ * 切换后即时持久化，下次「检查更新」即按新通道拉取。
+ */
+@Composable
+private fun UpdateChannelItem(
+    currentChannel: String,
+    onChannelChange: (String) -> Unit
+) {
+    val isBeta = currentChannel == com.open.wuling.data.local.UpdateChannelPreferences.CHANNEL_BETA
+    val summary = if (isBeta) "接收测试版更新（可能不稳定）" else "仅接收正式发布的版本"
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = if (isBeta) Icons.Filled.BugReport else Icons.Filled.Shield,
+                contentDescription = null,
+                tint = if (isBeta) Color(0xFFFF9800) else PrimaryGreen,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "更新通道",
+                    fontSize = 15.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = summary,
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Row(modifier = Modifier.fillMaxWidth()) {
+            ChannelChip(
+                label = "稳定版",
+                selected = !isBeta,
+                modifier = Modifier.weight(1f),
+                onClick = { onChannelChange(com.open.wuling.data.local.UpdateChannelPreferences.CHANNEL_STABLE) }
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            ChannelChip(
+                label = "测试版",
+                selected = isBeta,
+                modifier = Modifier.weight(1f),
+                onClick = { onChannelChange(com.open.wuling.data.local.UpdateChannelPreferences.CHANNEL_BETA) }
+            )
+        }
+    }
+}
+
+/** 更新通道单选项（选中时高亮底色 + 边框着色） */
+@Composable
+private fun ChannelChip(
+    label: String,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    val bg = if (selected) PrimaryGreen.copy(alpha = 0.15f)
+    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+    val borderColor = if (selected) PrimaryGreen else Color.Transparent
+    val textColor = if (selected) PrimaryGreen else MaterialTheme.colorScheme.onSurfaceVariant
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(bg)
+            .border(
+                width = 1.dp,
+                color = borderColor,
+                shape = RoundedCornerShape(10.dp)
+            )
+            .clickable(onClick = onClick)
+            .padding(vertical = 9.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            fontSize = 14.sp,
+            fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
+            color = textColor
+        )
+    }
+}
