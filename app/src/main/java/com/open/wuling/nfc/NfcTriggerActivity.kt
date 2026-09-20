@@ -59,8 +59,11 @@ private data class NfcUiState(
  * NFC 触发入口（v67）。
  *
  * 碰已绑定的标签时，系统 NDEF 派发带着标签内容拉起本页：
- *  - 绑定模式（设置页发起，[NfcBindRequest.pending]=true）：把新密钥写进标签后回设置页；
+ *  - 绑定模式（设置页发起）：把新密钥写进标签后回设置页。v79 起**同时接受 TECH 派发**——
+ *    空白/未格式化标签不含 NDEF 内容，系统不会派发 NDEF_DISCOVERED，只有经
+ *    TECH_DISCOVERED + [android.nfc.tech.NdefFormatable] 才能格式化并写入；
  *  - 触发模式：校验密钥 → 交 [NfcCarController] 反向下发解锁/锁车 → 展示结果自动关闭。
+ *    严格只认 NDEF_DISCOVERED，避免空白卡被当成已绑定标签误触。
  *
  * launchMode=singleTask：结果页展示期间再次碰标签不会叠出第二个实例，
  * 天然形成一层去抖。平台限制：普通 NDEF 标签必须亮屏才能读取，息屏触碰不派发。
@@ -92,19 +95,28 @@ class NfcTriggerActivity : ComponentActivity() {
 
     private fun handleIntent(intent: Intent?) {
         if (intent == null) { finish(); return }
-        if (intent.action != NfcAdapter.ACTION_NDEF_DISCOVERED) {
-            // TECH/TAG 派发（未按 NDEF 过滤到）不处理，避免误触
+
+        val isNdef = intent.action == NfcAdapter.ACTION_NDEF_DISCOVERED
+        val isTech = intent.action == NfcAdapter.ACTION_TECH_DISCOVERED
+        if (!isNdef && !isTech) {
+            // 其它派发（如 TAG_DISCOVERED）不处理，避免误触
             finish(); return
         }
 
+        // 先取 Tag：避免在不支持的卡上白白消耗「单次有效」的绑定态，
+        // 否则用户碰错一张卡就得回设置页重新点「绑定」。
+        val tag = IntentCompat.getParcelableExtra(intent, NfcAdapter.EXTRA_TAG, Tag::class.java)
+
         // ===== 绑定模式：设置页点了「绑定/重新绑定」，下一个标签拿来写入 =====
-        val bindSecret = controller.consumeBindingRequest()
-        if (bindSecret != null) {
-            val tag = IntentCompat.getParcelableExtra(intent, NfcAdapter.EXTRA_TAG, Tag::class.java)
+        // v79：同时接受 NDEF 与 TECH 派发。空白/未格式化的标签没有 NDEF 内容，
+        // 系统不会派发 NDEF_DISCOVERED，只有经 TECH + NdefFormatable 才能格式化写入。
+        if (controller.bindingPendingFlow.value) {
             if (tag == null) {
                 setUi(NfcPhase.FAILURE, "无法读取标签", "请换一张支持 NDEF 的标签（NTAG213/215/216）")
                 finishLater(3200); return
             }
+            val bindSecret = controller.consumeBindingRequest()
+            if (bindSecret == null) { finish(); return }
             setUi(NfcPhase.WORKING, "正在写入标签…", "请保持手机贴紧标签直到完成")
             lifecycleScope.launch {
                 if (writeToTag(tag, bindSecret)) {
@@ -118,6 +130,9 @@ class NfcTriggerActivity : ComponentActivity() {
             }
             return
         }
+
+        // 非绑定态收到 TECH 派发（多为空白卡）：不处理，避免把空白卡当成已绑定标签误触
+        if (!isNdef) { finish(); return }
 
         // ===== 触发模式：校验密钥后执行切换 =====
         val secret = readSecret(intent)

@@ -1,13 +1,21 @@
 package com.open.wuling
 
 import android.Manifest
+import android.app.PendingIntent
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.nfc.NfcAdapter
+import android.nfc.tech.Ndef
+import android.nfc.tech.NdefFormatable
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -47,6 +55,8 @@ import com.open.wuling.data.local.BleAutoLockPreferences
 import com.open.wuling.data.local.WeatherInfo
 import com.open.wuling.analytics.UmengAnalytics
 import com.open.wuling.analytics.UmengInitializer
+import com.open.wuling.nfc.NfcCarController
+import com.open.wuling.nfc.NfcTriggerActivity
 import com.open.wuling.ui.components.ACControlSheet
 import com.open.wuling.ui.components.BleAutoLockSheet
 import com.open.wuling.ui.components.PermissionDeniedDialog
@@ -77,8 +87,24 @@ enum class PermissionType {
 class MainActivity : ComponentActivity() {
     private lateinit var bleAutoLockPreferences: BleAutoLockPreferences
 
+    @Inject lateinit var nfcController: NfcCarController
+
     private var pendingPermissionType: PermissionType? = null
     private var onPermissionResult: ((Boolean) -> Unit)? = null
+
+    // ── NFC 绑定前台派发（v79）─────────────────────────────────────────
+    // 空白/未格式化的标签不含 NDEF 内容，系统**不会**后台派发 NDEF_DISCOVERED，
+    // 只有 TECH_DISCOVERED 才能进来交给 NdefFormatable 格式化写入。
+    // 这里刻意不用 Manifest 静态 intent-filter：那样会让本 App 在平时也成为
+    // 任意 Ndef 标签的候选接收者（表现为碰空白卡闪一下黑屏、抢走其他 NFC 工具的意图）。
+    // 改为仅在「绑定模式」期间开启前台派发，其余时间一律不接管 NFC。
+    private var nfcAdapter: NfcAdapter? = null
+    private var nfcPendingIntent: PendingIntent? = null
+    private val nfcTechLists = arrayOf(
+        arrayOf(Ndef::class.java.name),
+        arrayOf(NdefFormatable::class.java.name)
+    )
+    private var nfcDispatchActive = false
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -106,6 +132,20 @@ class MainActivity : ComponentActivity() {
             }
         })
 
+        // v79：绑定模式期间开启 NFC 前台派发，用于捕获空白/未格式化标签
+        nfcAdapter = NfcAdapter.getDefaultAdapter(this)
+        nfcPendingIntent = PendingIntent.getActivity(
+            this, 0,
+            Intent(this, NfcTriggerActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0)
+                    or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                nfcController.bindingPendingFlow.collect { setNfcDispatch(it) }
+            }
+        }
+
         setContent {
             AppContent(
                 bleAutoLockPreferences = bleAutoLockPreferences,
@@ -114,6 +154,26 @@ class MainActivity : ComponentActivity() {
                 }
             )
         }
+    }
+
+    /** 绑定模式期间才接管 NFC；其余时间一律关闭 */
+    private fun setNfcDispatch(enable: Boolean) {
+        if (enable == nfcDispatchActive) return
+        val adapter = nfcAdapter ?: return
+        runCatching {
+            if (enable) {
+                adapter.enableForegroundDispatch(this, nfcPendingIntent, null, nfcTechLists)
+                nfcDispatchActive = true
+            } else {
+                adapter.disableForegroundDispatch(this)
+                nfcDispatchActive = false
+            }
+        }.onFailure { nfcDispatchActive = false }
+    }
+
+    override fun onPause() {
+        setNfcDispatch(false)
+        super.onPause()
     }
 
     fun checkPermissions(permissionType: PermissionType): Boolean {
@@ -380,6 +440,9 @@ fun MainScreen(
     }
     
     val selectedVehicle by appState.selectedVehicle.collectAsState()
+    // v69：循环预约充电状态
+    val reserveCharge by appState.reserveCharge.collectAsState()
+    val reserveChargeLoading by appState.reserveChargeLoading.collectAsState()
     val isLoading by appState.isLoading.collectAsState()
     val errorMessage by appState.errorMessage.collectAsState()
     val commandResult by appState.commandResult.collectAsState()
@@ -546,7 +609,13 @@ fun MainScreen(
                     },
                     bleConnectionState = bleConnectionState,
                     onToggleBleConnection = { appState.toggleBleConnection() },
-                    bleFilteredRssi = bleFilteredRssi
+                    bleFilteredRssi = bleFilteredRssi,
+                    // v69：循环预约充电（主页内联区块）
+                    reserveCharge = reserveCharge,
+                    reserveChargeLoading = reserveChargeLoading,
+                    onLoadReserveCharge = { appState.loadReserveCharge() },
+                    onSetReserveCharge = { sh, sm, eh, em -> appState.setReserveCharge(sh, sm, eh, em) },
+                    onCancelReserveCharge = { appState.cancelReserveCharge() }
                 )
                 1 -> DetailScreen(
                     modifier = Modifier.padding(paddingValues),

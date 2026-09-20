@@ -191,7 +191,8 @@ class BleAutoLockManager(
                     bluetoothGatt?.close(); bluetoothGatt = null
 
                     scope.launch {
-                        if (preferences.enabled.first() && isAuthenticated) {
+                        // v79：断线自动重扫只取决于「蓝牙自动连接」，与自动解锁策略解耦
+                        if (preferences.connectEnabled.first() && isAuthenticated) {
                             addLog("2秒后重新扫描")
                             delay(2000)
                             startScanning()
@@ -331,6 +332,7 @@ class BleAutoLockManager(
         if (isAuthenticated && authSessionKey != null) {
             addLog("已鉴权, 跳过握手直接就绪")
             _connectionState.value = ConnectionState.Connected
+            onShowToast("蓝牙钥匙已就绪，可控制车辆")
             startRssiReading()
             drainPendingCommands()
             return
@@ -452,6 +454,7 @@ class BleAutoLockManager(
         _connectionState.value = ConnectionState.Connected
         bluetoothGatt?.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH)
         addLog("鉴权成功！握手完成")
+        onShowToast("蓝牙钥匙已就绪，可控制车辆")
         startRssiReading()
         drainPendingCommands()
     }
@@ -532,7 +535,8 @@ class BleAutoLockManager(
 
     private fun observePreferences() {
         scope.launch {
-            preferences.enabled.collect { enabled ->
+            // v79：保活服务跟随「蓝牙自动连接」，而非「自动解锁」策略
+            preferences.connectEnabled.collect { enabled ->
                 updateForegroundService()
             }
         }
@@ -545,10 +549,10 @@ class BleAutoLockManager(
 
     private fun updateForegroundService() {
         scope.launch {
-            val enabled = preferences.enabled.first()
+            val connectEnabled = preferences.connectEnabled.first()
             val foregroundEnabled = preferences.foregroundServiceEnabled.first()
             
-            if (enabled && foregroundEnabled) {
+            if (connectEnabled && foregroundEnabled) {
                 startForegroundService()
             } else {
                 stopForegroundService()
@@ -572,16 +576,20 @@ class BleAutoLockManager(
         }
     }
 
-    /** 全局开关：关闭时彻底停止扫描和连接，避免干扰linkey */
+    /**
+     * 「靠近自动解锁 / 远离自动上锁」策略开关。
+     * v79：不再连带停止蓝牙连接——旧实现在关闭时会 stop()，导致想再连必须重开开关。
+     * 蓝牙能否连接由 BleAutoLockPreferences.connectEnabled 决定。
+     */
     fun setEnabled(enabled: Boolean) {
         scope.launch {
             preferences.setEnabled(enabled)
-            if (!enabled) stop()
         }
     }
 
     private suspend fun start() {
-        if (!preferences.enabled.first()) { addLog("全局开关已关闭，跳过启动"); return }
+        // v79：基础连接不受自动解锁策略影响，只看「蓝牙自动连接」
+        if (!preferences.connectEnabled.first()) { addLog("蓝牙自动连接已关闭，跳过启动"); return }
         addLog("start() 开始执行")
 
         if (!hasRequiredPermissions()) {
@@ -748,6 +756,8 @@ class BleAutoLockManager(
 
     private suspend fun processRssi(rssi: Int) {
         if (isInCooldown) return
+        // v79：未开启「无感控车（自动解锁/上锁）」时，只做 RSSI 监测，不自动落锁/解锁
+        if (!preferences.enabled.first()) return
 
         if (isPausedByManualControl) {
             if (System.currentTimeMillis() >= pauseResumeTime) {

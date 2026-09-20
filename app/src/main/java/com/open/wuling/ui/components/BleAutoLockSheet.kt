@@ -47,6 +47,7 @@ fun BleAutoLockSheet(
     var showScannedDevices by remember { mutableStateOf(false) }
 
     val enabled by preferences.enabled.collectAsState(initial = false)
+    val connectEnabled by preferences.connectEnabled.collectAsState(initial = true)
     val logEnabled by preferences.logEnabled.collectAsState(initial = true)
     val foregroundServiceEnabled by preferences.foregroundServiceEnabled.collectAsState(initial = false)
     val unlockRssi by preferences.unlockRssi.collectAsState(initial = DEFAULT_UNLOCK_RSSI)
@@ -168,6 +169,7 @@ fun BleAutoLockSheet(
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
+                    // v79：蓝牙自动连接（基础能力）——不依赖「自动解锁」策略，默认开启
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -175,12 +177,41 @@ fun BleAutoLockSheet(
                     ) {
                         Column {
                             Text(
-                                text = "启用无感控车",
+                                text = "蓝牙自动连接",
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Medium
                             )
                             Text(
-                                text = "靠近自动解锁，远离自动上锁",
+                                text = "App 启动后自动连接车辆蓝牙；关闭也可手动点「连接」",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = connectEnabled,
+                            onCheckedChange = {
+                                scope.launch {
+                                    preferences.setConnectEnabled(it)
+                                }
+                            }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "靠近自动解锁 / 远离自动上锁",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = "按蓝牙信号强度自动控制车门，不影响蓝牙能否连接",
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

@@ -13,7 +13,13 @@ private val Context.dataStore by preferencesDataStore(name = "ble_auto_lock")
  */
 class BleAutoLockPreferences(private val context: Context) {
     companion object {
+        /**
+         * 「靠近自动解锁 / 远离自动上锁」自动化策略开关。
+         * v79 起不再等价于「能否连接蓝牙」——蓝牙基础连接由 [KEY_CONNECT_ENABLED] 控制。
+         */
         private val KEY_ENABLED = booleanPreferencesKey("enabled")
+        /** 蓝牙自动连接（基础能力）开关，默认开启：关闭它也仍可手动连接蓝牙 */
+        private val KEY_CONNECT_ENABLED = booleanPreferencesKey("connect_enabled")
         private val KEY_BLE_MAC = stringPreferencesKey("ble_mac")
         private val KEY_USER_ID = stringPreferencesKey("ble_user_id")
         private val KEY_COLLECT_TIME = stringPreferencesKey("ble_collect_time")
@@ -50,6 +56,14 @@ class BleAutoLockPreferences(private val context: Context) {
 
     val enabled: Flow<Boolean> = context.dataStore.data.map { preferences ->
         preferences[KEY_ENABLED] ?: false
+    }
+
+    /**
+     * 蓝牙自动连接（基础能力）：控制冷启动自动连接、断线自动重扫、保活服务是否可用。
+     * 默认 true——不打开「无感控车」也能连上蓝牙手动控车；关闭则不自动连，但仍可手动点「连接」。
+     */
+    val connectEnabled: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[KEY_CONNECT_ENABLED] ?: true
     }
 
     val bleMac: Flow<String> = context.dataStore.data.map { preferences ->
@@ -127,6 +141,12 @@ class BleAutoLockPreferences(private val context: Context) {
     suspend fun setEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[KEY_ENABLED] = enabled
+        }
+    }
+
+    suspend fun setConnectEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[KEY_CONNECT_ENABLED] = enabled
         }
     }
 
