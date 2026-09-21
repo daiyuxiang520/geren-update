@@ -48,19 +48,23 @@ object ParkingHistoryStore {
 
     fun record(context: Context, lat: Double, lon: Double) {
         if (lat == 0.0 && lon == 0.0) return
-        val now = System.currentTimeMillis()
-        val points = load(context).toMutableList()
+        // v84：与 saveName 共用 writeLock，避免「状态刷新记录」与「逆地理写名」并发时
+        //      读-改-写互相覆盖（丢失更新/脏读）。
+        synchronized(writeLock) {
+            val now = System.currentTimeMillis()
+            val points = load(context).toMutableList()
 
-        // 与最近一条比较：50m 内视为同一停车点，只续期 lastSeen
-        val last = points.firstOrNull()
-        if (last != null && distanceMeters(last.lat, last.lon, lat, lon) < SAME_SPOT_METERS) {
-            points[0] = last.copy(lastSeen = now)
-        } else {
-            points.add(0, Point(lat, lon, now, now))
+            // 与最近一条比较：50m 内视为同一停车点，只续期 lastSeen
+            val last = points.firstOrNull()
+            if (last != null && distanceMeters(last.lat, last.lon, lat, lon) < SAME_SPOT_METERS) {
+                points[0] = last.copy(lastSeen = now)
+            } else {
+                points.add(0, Point(lat, lon, now, now))
+            }
+
+            while (points.size > MAX_POINTS) points.removeAt(points.size - 1)
+            save(context, points)
         }
-
-        while (points.size > MAX_POINTS) points.removeAt(points.size - 1)
-        save(context, points)
     }
 
     /** 最近停车点在前 */

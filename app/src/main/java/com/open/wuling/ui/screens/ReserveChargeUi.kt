@@ -37,6 +37,8 @@ fun ReserveChargeSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showDialog by remember { mutableStateOf(false) }
+    // v84：时间校验错误提示（结束时间需晚于开始时间）
+    var timeError by remember { mutableStateOf<String?>(null) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -139,10 +141,19 @@ fun ReserveChargeSheet(
             initialStartMinute = start?.startMinute?.trim()?.toIntOrNull() ?: 0,
             initialEndHour = start?.endHour?.trim()?.toIntOrNull() ?: 8,
             initialEndMinute = start?.endMinute?.trim()?.toIntOrNull() ?: 0,
-            onDismiss = { showDialog = false },
+            errorText = timeError,
+            onDismiss = { showDialog = false; timeError = null },
             onConfirm = { sh, sm, eh, em ->
-                showDialog = false
-                onSet(sh, sm, eh, em)
+                // v84：校验「结束晚于开始」，拒绝提交 start >= end 的非法时段。
+                val startMin = sh * 60 + sm
+                val endMin = eh * 60 + em
+                if (endMin <= startMin) {
+                    timeError = "结束时间需晚于开始时间"
+                } else {
+                    timeError = null
+                    showDialog = false
+                    onSet(sh, sm, eh, em)
+                }
             }
         )
     }
@@ -159,6 +170,7 @@ private fun ReserveChargeTimeDialog(
     initialStartMinute: Int,
     initialEndHour: Int,
     initialEndMinute: Int,
+    errorText: String? = null,
     onDismiss: () -> Unit,
     onConfirm: (Int, Int, Int, Int) -> Unit
 ) {
@@ -187,6 +199,15 @@ private fun ReserveChargeTimeDialog(
         text = {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 TimePicker(state = state)
+                // v84：非法时段提示（如 开始 22:00 > 结束 08:00）
+                if (!errorText.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = errorText,
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
             }
         },
         confirmButton = {

@@ -250,8 +250,10 @@ class MqttRepository @Inject constructor(
 
     private fun teardownClient() {
         closing = true
-        runCatching { client?.disconnect() }   // graceful disconnect 不触发自动重连
+        // v84：先取出并清空引用，再断开——避免断连回调期间新连接写入 client 后被旧引用覆盖。
+        val old = client
         client = null
+        runCatching { old?.disconnect() }   // graceful disconnect 不触发自动重连
     }
 
     /**

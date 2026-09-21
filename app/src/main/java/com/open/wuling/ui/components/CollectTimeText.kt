@@ -4,6 +4,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,10 +44,14 @@ fun CollectTimeText(
     // 每分钟 tick 一次，驱动「N 分钟前」走表（数据本身 30 秒才刷一次，分钟级足够）
     // 注：用 mutableStateOf 而非 mutableLongStateOf（后者要求 compose runtime 1.5+）
     var now by remember { mutableStateOf(System.currentTimeMillis()) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(60_000L)
-            now = System.currentTimeMillis()
+    // v84：生命周期敏感——仅页面 RESUMED 时走表，退到后台不再空转。
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            while (true) {
+                delay(60_000L)
+                now = System.currentTimeMillis()
+            }
         }
     }
 

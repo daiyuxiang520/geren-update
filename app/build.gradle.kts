@@ -20,8 +20,8 @@ android {
         applicationId = "com.wuling.app.repack"
         minSdk = 26
         targetSdk = 36
-        versionCode = 83
-        versionName = "3.80.0"
+        versionCode = 84
+        versionName = "3.81.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

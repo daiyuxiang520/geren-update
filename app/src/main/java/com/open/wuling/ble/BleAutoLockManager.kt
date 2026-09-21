@@ -49,6 +49,8 @@ class BleAutoLockManager(
         private const val MTU_SIZE = 251
         private const val DELAY_AFTER_CONNECT = 500L
         private const val DELAY_AFTER_NOTIFY = 500L
+        /** v84：鉴权握手看门狗超时（毫秒） */
+        private const val AUTH_TIMEOUT = 8000L
     }
 
     private val bluetoothManager: BluetoothManager? =
@@ -192,6 +194,8 @@ class BleAutoLockManager(
                 }
                 BluetoothProfile.STATE_DISCONNECTED -> {
                     addLog("蓝牙已断开, status=$status")
+                    // v84：断线时取消握手看门狗，避免误触发
+                    handler.removeCallbacks(authTimeoutRunnable)
                     _connectionState.value = ConnectionState.Disconnected
                     bluetoothGatt?.close(); bluetoothGatt = null
 
@@ -211,8 +215,12 @@ class BleAutoLockManager(
         override fun onMtuChanged(gatt: BluetoothGatt?, mtu: Int, status: Int) {
             super.onMtuChanged(gatt, mtu, status)
             addLog("MTU 已改变: mtu=$mtu, status=$status")
-            if (status == BluetoothGatt.GATT_SUCCESS) {
+            // v84：MTU 协商失败不再直接放弃——仍尝试用当前 MTU 发现服务（不少设备支持默认 MTU）。
+            if (status == BluetoothGatt.GATT_SUCCESS || mtu > 0) {
                 addLog("开始发现服务")
+                gatt?.discoverServices()
+            } else {
+                addLog("MTU 协商失败(status=$status)，仍尝试发现服务")
                 gatt?.discoverServices()
             }
         }
@@ -220,6 +228,12 @@ class BleAutoLockManager(
         override fun onServicesDiscovered(gatt: BluetoothGatt?, status: Int) {
             super.onServicesDiscovered(gatt, status)
             addLog("服务发现: status=$status")
+            // v84：发现失败此前无任何处理 → 握手永久挂起。这里主动断开，交给断线重连逻辑重扫。
+            if (status != BluetoothGatt.GATT_SUCCESS) {
+                addLog("⚠️ 服务发现失败(status=$status)，断开以触发重连")
+                runCatching { gatt?.disconnect() }
+                return
+            }
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 addLog("再次请求高连接优先级")
                 gatt?.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH)
@@ -262,6 +276,25 @@ class BleAutoLockManager(
         ) {
             super.onCharacteristicWrite(gatt, characteristic, status)
             addLog("特征写入: ${characteristic?.uuid}, status=$status")
+            if (status != BluetoothGatt.GATT_SUCCESS) {
+                // v84：写入失败此前被静默忽略，导致指令丢包无感知。这里明确记录。
+                addLog("⚠️ 特征写入失败(uuid=${characteristic?.uuid}, status=$status)")
+            }
+        }
+
+        /**
+         * v84：同时重写 3 参数重载（Android 13 / API 33 起框架优先调用它）。
+         * 旧实现只重写 2 参数版本并读 `characteristic.value`，在并发通知下可能
+         * 读到被后续通知覆盖的值，导致鉴权握手或状态通知错位。
+         */
+        override fun onCharacteristicChanged(
+            gatt: BluetoothGatt,
+            characteristic: BluetoothGattCharacteristic,
+            value: ByteArray
+        ) {
+            super.onCharacteristicChanged(gatt, characteristic, value)
+            addLog("特征通知(3参): ${characteristic.uuid}, 数据长度: ${value.size}")
+            handleCharacteristicData(value)
         }
 
         override fun onCharacteristicChanged(
@@ -394,6 +427,19 @@ class BleAutoLockManager(
         authWriteChar.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
         gatt.writeCharacteristic(authWriteChar)
         addLog("HELLO已发送到 0x2A6E")
+
+        // v84：鉴权握手看门狗。此前握手无超时，任一步回包丢失就永久卡在 Connecting，
+        //      既不出结果也不重连。这里 8 秒未完成即断开，交给断线逻辑重扫。
+        handler.removeCallbacks(authTimeoutRunnable)
+        handler.postDelayed(authTimeoutRunnable, AUTH_TIMEOUT)
+    }
+
+    /** v84：鉴权握手超时回调 */
+    private val authTimeoutRunnable = Runnable {
+        if (!isAuthenticated && _connectionState.value !is ConnectionState.Connected) {
+            addLog("⚠️ 鉴权握手超时（${AUTH_TIMEOUT}ms），断开以触发重连")
+            runCatching { bluetoothGatt?.disconnect() }
+        }
     }
     
     /**
@@ -459,6 +505,8 @@ class BleAutoLockManager(
         scanRetryCount = 0
         _connectionState.value = ConnectionState.Connected
         bluetoothGatt?.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH)
+        // v84：握手成功，取消看门狗
+        handler.removeCallbacks(authTimeoutRunnable)
         addLog("鉴权成功！握手完成")
         onShowToast("蓝牙钥匙已就绪，可控制车辆")
         startRssiReading()
@@ -932,6 +980,8 @@ class BleAutoLockManager(
     fun destroy() {
         stop()
         handler.removeCallbacksAndMessages(null)
+        // v84：不再取消共享 scope（scope 由 AppState 持有，是长生命周期单例）。
+        // 仅清理本管理器在 handler 上的回调，避免误杀 AppState 的其它协程。
     }
 
     fun clearLogs() {

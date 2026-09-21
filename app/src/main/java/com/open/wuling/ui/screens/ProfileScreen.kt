@@ -79,6 +79,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.LaunchedEffect
@@ -1227,10 +1230,14 @@ private fun LogViewerSheet(
     val context = LocalContext.current
 
     // v59：打开期间每秒自动刷新（此前需手动点「刷新」；详情页 5 秒轮询在滚，手动跟不住）
-    LaunchedEffect(Unit) {
-        while (true) {
-            logs = AppLogger.getAllLogs()
-            kotlinx.coroutines.delay(1000)
+    // v84：生命周期敏感——仅页面 RESUMED 时轮询，退到后台暂停，避免后台空转耗电。
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            while (true) {
+                logs = AppLogger.getAllLogs()
+                kotlinx.coroutines.delay(1000)
+            }
         }
     }
 

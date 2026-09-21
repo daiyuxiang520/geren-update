@@ -94,7 +94,9 @@ fun EnergyTrendChart(
                     // v55：点击选柱。整条 slot 都是热区（不要求精确点中几 dp 宽的柱子），
                     // 车机上手指粗、柱子细，只有放大热区才点得准。
                     if (onSelect != null) {
-                        Modifier.pointerInput(points.size, selectedIndex) {
+                        // v84：key 只保留 points.size。此前把 selectedIndex 也作 key，
+                        //      每次高亮/选中变化都会重建手势检测，可能吞掉一次点击。
+                        Modifier.pointerInput(points.size) {
                             detectTapGestures { offset ->
                                 val n = points.size
                                 if (n > 0) {
@@ -358,8 +360,10 @@ fun EnergyTrendLine(
     }
 }
 
+// v84：统一用 Locale.US，避免在德语等区域设置下小数点变成逗号，与卡片数值显示不一致。
 private fun fmtOrDash(v: Double?): String =
-    if (v == null) "--" else if (v >= 100) "%.0f".format(v) else "%.1f".format(v)
+    if (v == null) "--" else if (v >= 100) String.format(java.util.Locale.US, "%.0f", v)
+    else String.format(java.util.Locale.US, "%.1f", v)
 
 /**
  * 油电构成饼图（v55，能量折算口径）。
@@ -389,6 +393,10 @@ fun EnergyPieChart(
     label: String = ""
 ) {
     val fuelToKwh = 3.0   // 与 EnergyAPI.FUEL_TO_KWH 保持一致
+
+    // v84：甜甜圈中心遮盖色。此前硬编码 Color.White，深色模式下会露出刺眼白圆；
+    //      改为跟随主题卡片容器色（在 Composable 作用域预取，Canvas 内不可读主题）。
+    val donutCenterColor = MaterialTheme.colorScheme.surface
 
     // 数据缺失：明确说明，不画图
     if (elec == null && fuel == null) {
@@ -449,8 +457,7 @@ fun EnergyPieChart(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Canvas(modifier = Modifier.size(size.dp)) {
-            val stroke = 26f
-            val r = (minOf(this.size.width, this.size.height) - stroke) / 2f
+            val r = minOf(this.size.width, this.size.height) / 2f
             val cx = this.size.width / 2f
             val cy = this.size.height / 2f
 
@@ -488,7 +495,7 @@ fun EnergyPieChart(
 
             // 中心留白挖成甜甜圈，中间放"总能量"，比实心饼更易读
             drawCircle(
-                color = Color.White,
+                color = donutCenterColor,
                 radius = r * 0.52f,
                 center = Offset(cx, cy)
             )

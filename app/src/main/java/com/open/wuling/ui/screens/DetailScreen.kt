@@ -37,6 +37,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
@@ -66,10 +69,14 @@ fun DetailScreen(
     val scrollState = rememberScrollState()
 
     // 每 5 秒快速刷新（仅主状态，保留诊断/胎压/昨日里程）
-    LaunchedEffect(Unit) {
-        while (true) {
-            kotlinx.coroutines.delay(5000)
-            onQuickRefresh()
+    // v84：改为生命周期敏感——仅在页面 RESUMED 时轮询，退到后台自动暂停，省电省流量。
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            while (true) {
+                kotlinx.coroutines.delay(5000)
+                onQuickRefresh()
+            }
         }
     }
 

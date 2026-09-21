@@ -3,6 +3,7 @@ package com.open.wuling
 import android.Manifest
 import android.app.PendingIntent
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.nfc.NfcAdapter
 import android.nfc.tech.Ndef
@@ -105,6 +106,18 @@ class MainActivity : ComponentActivity() {
         arrayOf(Ndef::class.java.name),
         arrayOf(NdefFormatable::class.java.name)
     )
+
+    /**
+     * v84：绑定模式下的 NDEF 过滤。此前传 null → 拦截**所有** NDEF 标签
+     * （含用户银行卡/公交卡），触碰即尝试写入本 App 密钥，存在误写风险。
+     * 这里只接收本 App 自有 MIME 的 NDEF 记录；空白/未格式化标签仍由
+     * nfcTechLists（Ndef/NdefFormatable）兜住，不影响 v79 的空白卡绑定能力。
+     */
+    private val nfcFilters = arrayOf(
+        IntentFilter(NfcAdapter.ACTION_NDEF_DISCOVERED).apply {
+            addDataType(NfcCarController.MIME_TYPE)
+        }
+    )
     private var nfcDispatchActive = false
 
     private val requestPermissionLauncher = registerForActivityResult(
@@ -169,7 +182,7 @@ class MainActivity : ComponentActivity() {
         val adapter = nfcAdapter ?: return
         runCatching {
             if (enable) {
-                adapter.enableForegroundDispatch(this, nfcPendingIntent, null, nfcTechLists)
+                adapter.enableForegroundDispatch(this, nfcPendingIntent, nfcFilters, nfcTechLists)
                 nfcDispatchActive = true
             } else {
                 adapter.disableForegroundDispatch(this)

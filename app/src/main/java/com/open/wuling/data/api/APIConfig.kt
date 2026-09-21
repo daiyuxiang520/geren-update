@@ -22,6 +22,21 @@ object APIConfig {
         accessToken = token
     }
 
+    /**
+     * v84：当前选中的车辆 VIN。
+     *
+     * 用于 `sendCommand`（/remote/control）补传 vin——该接口此前不带 vin，
+     * 服务端在多车/子车场景下可能无法定位目标车而拒绝指令（如闪灯、尾箱）。
+     * 由 AppState 在选定车辆时写入。
+     */
+    @Volatile
+    var currentVin: String = ""
+        private set
+
+    fun setCurrentVin(vin: String) {
+        currentVin = vin
+    }
+
     // 以下常量从 BuildConfig 读取（值来源于 local.properties，不提交到 VCS）
     val clientId: String get() = BuildConfig.CLIENT_ID
     val clientSecret: String get() = BuildConfig.CLIENT_SECRET

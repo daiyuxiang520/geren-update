@@ -85,6 +85,19 @@ class NfcTriggerActivity : ComponentActivity() {
         handleIntent(intent)
     }
 
+    /**
+     * v84：重写 onNewIntent。
+     *
+     * launchMode=singleTask 下，结果页展示期间（finishLater 延迟关闭）或 Activity
+     * 复用期间的再次碰标签会走 onNewIntent，此前未重写 → 第二次触发被系统静默丢弃，
+     * 表现为「再碰一下没反应」。这里统一交给 handleIntent 处理。
+     */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIntent(intent)
+    }
+
     private fun setUi(phase: NfcPhase, title: String, subtitle: String) {
         ui.value = NfcUiState(phase, title, subtitle)
     }
@@ -171,7 +184,10 @@ class NfcTriggerActivity : ComponentActivity() {
 
     /** 从 NDEF_DISCOVERED intent 里取出我们 MIME 类型记录的密钥 */
     private fun readSecret(intent: Intent): String? = try {
-        val raw = intent.getParcelableArrayExtra(NfcAdapter.EXTRA_NDEF_MESSAGES) ?: return null
+        // v84：IntentCompat 带类型读取替代废弃的 getParcelableArrayExtra，并校验记录存在性
+        val raw = IntentCompat.getParcelableArrayExtra(
+            intent, NfcAdapter.EXTRA_NDEF_MESSAGES, NdefMessage::class.java
+        ) ?: return null
         val msg = raw.firstOrNull() as? NdefMessage ?: return null
         val record = msg.records.firstOrNull {
             it.tnf == NdefRecord.TNF_MIME_MEDIA &&

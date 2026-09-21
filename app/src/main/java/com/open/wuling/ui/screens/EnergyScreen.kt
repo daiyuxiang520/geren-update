@@ -114,6 +114,9 @@ fun EnergyScreen(
     // v83：图表视觉高亮（日维度默认指向所选日），**不控制弹窗**。
     // 与 selectedTrendIndex 分离，避免「高亮」副作用触发「弹窗」。
     var highlightTrendIndex by remember { mutableStateOf<Int?>(null) }
+    // v84：趋势数据加载的「上下文」标识（tab+日期/月/年）。用于区分「切换上下文」
+    // 与「手动刷新」——只有前者才清空弹窗索引，刷新时保留用户查看中的详情。
+    var lastTrendCtx by remember { mutableStateOf<String?>(null) }
     // 弹层里展示的明细（点柱子后才去拿，避免每次加载都多打请求）
     var detailStats by remember { mutableStateOf<EnergyAPI.EnergyStats?>(null) }
     var detailLoading by remember { mutableStateOf(false) }
@@ -173,12 +176,17 @@ fun EnergyScreen(
         }
         // 日维度：高亮落到「所选日」；月/年维度无单日概念，清空高亮。
         // 只动 highlightTrendIndex，不清则弹窗 —— 弹窗必须由用户点击触发（v83 修复）。
-        // 同时把 selectedTrendIndex 清空，避免切日期/切 tab 后旧弹窗内容与新页面不一致。
         highlightTrendIndex =
             if (tabIndex == 0 && trendPoints.isNotEmpty())
                 (selectedDate.dayOfMonth - 1).coerceIn(0, trendPoints.lastIndex)
             else null
-        selectedTrendIndex = null
+        // v84：仅当「上下文」变化（切 tab / 切日期/月/年）才清空弹窗索引；
+        //      手动刷新（refreshKey 变化）时保留用户正在查看的柱子详情，避免被强制关闭。
+        val ctx = "$tabIndex|$selectedDate|$selectedMonth|$selectedYear"
+        if (ctx != lastTrendCtx) {
+            lastTrendCtx = ctx
+            selectedTrendIndex = null
+        }
         trendLoading = false
     }
 

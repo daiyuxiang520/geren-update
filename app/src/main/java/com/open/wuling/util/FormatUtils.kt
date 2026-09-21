@@ -8,15 +8,17 @@ object FormatUtils {
 
     // physicsEngine: 1=纯电 2=油混 3=插混 4=增程
     private val PHYSICS_ENGINE_MAP = mapOf(
-        1 to "纯电动", 2 to "油电混动", 3 to "插电混动", 4 to "插电混动"
+        1 to "纯电动", 2 to "油电混动", 3 to "插电混动", 4 to "增程"
     )
 
-    fun getPowerTypeName(engineType: Int): String = when (engineType) {
-        0 -> "插电混动"
-        1 -> "纯电动"
-        2 -> "增程"
-        else -> "未知"
-    }
+    /**
+     * 获取动力类型显示名称（单一口径）。
+     *
+     * v84：此前本函数与 PHYSICS_ENGINE_MAP 对同一编码给出不同结果（如 2 → 此处「增程」
+     * 而 map 为「油电混动」），语义矛盾。现统一走 PHYSICS_ENGINE_MAP，避免误用。
+     */
+    fun getPowerTypeName(engineType: Int): String =
+        PHYSICS_ENGINE_MAP[engineType] ?: "未知"
 
     /**
      * 获取动力类型显示名称（多源综合判断）。

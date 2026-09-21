@@ -27,7 +27,13 @@ data class APIResponse<T>(
     @SerializedName("message") val message: String? = null
 ) {
     val isSuccess: Boolean
-        get() = success == true || result == true || errorCode == "0" || errorCode == null
+        // v84：result/success 明确为 false 时一律判失败（旧实现因 errorCode==null 兜底
+        //      会把业务失败误判为成功）；其余情况沿用原「宽松成功」口径，避免破坏正常路径。
+        get() = when {
+            result == false || success == false -> false
+            success == true || result == true || errorCode == "0" || errorCode == null -> true
+            else -> false
+        }
 }
 
 // ============== Car Status Response ==============
@@ -40,7 +46,13 @@ data class CarStatusResponse(
     @SerializedName("message") val message: String? = null
 ) {
     val isSuccess: Boolean
-        get() = success == true || result == true || errorCode == "0" || errorCode == null
+        // v84：result/success 明确为 false 时一律判失败（旧实现因 errorCode==null 兜底
+        //      会把业务失败误判为成功）；其余情况沿用原「宽松成功」口径，避免破坏正常路径。
+        get() = when {
+            result == false || success == false -> false
+            success == true || result == true || errorCode == "0" || errorCode == null -> true
+            else -> false
+        }
 }
 
 data class CarStatusData(
@@ -279,7 +291,13 @@ data class CheckStatusResponse(
     @SerializedName("errorMessage") val errorMessage: String? = null
 ) {
     val isSuccess: Boolean
-        get() = success == true || result == true || errorCode == "0" || errorCode == null
+        // v84：result/success 明确为 false 时一律判失败（旧实现因 errorCode==null 兜底
+        //      会把业务失败误判为成功）；其余情况沿用原「宽松成功」口径，避免破坏正常路径。
+        get() = when {
+            result == false || success == false -> false
+            success == true || result == true || errorCode == "0" || errorCode == null -> true
+            else -> false
+        }
 }
 
 data class CheckStatusData(
@@ -298,7 +316,13 @@ data class AuthorizeResponse(
     @SerializedName("errorMessage") val errorMessage: String? = null
 ) {
     val isSuccess: Boolean
-        get() = success == true || result == true || errorCode == "0" || errorCode == null
+        // v84：result/success 明确为 false 时一律判失败（旧实现因 errorCode==null 兜底
+        //      会把业务失败误判为成功）；其余情况沿用原「宽松成功」口径，避免破坏正常路径。
+        get() = when {
+            result == false || success == false -> false
+            success == true || result == true || errorCode == "0" || errorCode == null -> true
+            else -> false
+        }
 }
 
 data class AuthorizeData(
@@ -315,7 +339,13 @@ data class SearchCarResponse(
     @SerializedName("errorMessage") val errorMessage: String? = null
 ) {
     val isSuccess: Boolean
-        get() = success == true || result == true || errorCode == "0" || errorCode == null
+        // v84：result/success 明确为 false 时一律判失败（旧实现因 errorCode==null 兜底
+        //      会把业务失败误判为成功）；其余情况沿用原「宽松成功」口径，避免破坏正常路径。
+        get() = when {
+            result == false || success == false -> false
+            success == true || result == true || errorCode == "0" || errorCode == null -> true
+            else -> false
+        }
 }
 
 data class SearchCarData(
@@ -337,7 +367,13 @@ data class WindowControlResponse(
     @SerializedName("errorMessage") val errorMessage: String? = null
 ) {
     val isSuccess: Boolean
-        get() = success == true || result == true || errorCode == "0" || errorCode == null
+        // v84：result/success 明确为 false 时一律判失败（旧实现因 errorCode==null 兜底
+        //      会把业务失败误判为成功）；其余情况沿用原「宽松成功」口径，避免破坏正常路径。
+        get() = when {
+            result == false || success == false -> false
+            success == true || result == true || errorCode == "0" || errorCode == null -> true
+            else -> false
+        }
 }
 
 data class WindowControlData(
@@ -354,7 +390,13 @@ data class BleKeyResponse(
     @SerializedName("errorMessage") val errorMessage: String? = null
 ) {
     val isSuccess: Boolean
-        get() = success == true || result == true || errorCode == "0" || errorCode == null
+        // v84：result/success 明确为 false 时一律判失败（旧实现因 errorCode==null 兜底
+        //      会把业务失败误判为成功）；其余情况沿用原「宽松成功」口径，避免破坏正常路径。
+        get() = when {
+            result == false || success == false -> false
+            success == true || result == true || errorCode == "0" || errorCode == null -> true
+            else -> false
+        }
 }
 
 data class BleKeyData(

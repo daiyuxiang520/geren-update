@@ -277,6 +277,15 @@ class AppState @Inject constructor(
      * 初始化：从持久化存储恢复 Token 和 BLE 配置
      */
     fun init(context: Context) {
+        // v84：幂等守卫。MainScreen 的 LaunchedEffect(Unit) 在配置变更（旋屏/重建）
+        // 时会重跑 init，旧实现会重复 new BleAutoLockManager（泄漏 GATT/扫描）并
+        // 重复注册广播接收器。这里保证整进程只初始化一次。
+        if (initialized) {
+            Log.d(TAG, "init() 已初始化，跳过重复调用")
+            return
+        }
+        initialized = true
+
         appContext = context.applicationContext
         bleAutoLockPreferences = BleAutoLockPreferences(appContext)
         bleAutoLockManager = BleAutoLockManager(
@@ -394,6 +403,10 @@ class AppState @Inject constructor(
     private val MANUAL_DISCONNECT_SUPPRESS_MS = 10 * 60 * 1000L
     private var lastManualDisconnectAt = 0L
 
+    /** v84：init 幂等守卫，避免配置变更重复初始化/重复注册接收器 */
+    private var initialized = false
+    private var bleStateReceiverRegistered = false
+
     private val bleStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action != BluetoothAdapter.ACTION_STATE_CHANGED) return
@@ -408,12 +421,15 @@ class AppState @Inject constructor(
     }
 
     private fun registerBleStateReceiver() {
+        // v84：幂等注册，防止重复 registerReceiver 抛 IllegalArgumentException
+        if (bleStateReceiverRegistered) return
         runCatching {
             ContextCompat.registerReceiver(
                 appContext, bleStateReceiver,
                 IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED),
                 ContextCompat.RECEIVER_NOT_EXPORTED
             )
+            bleStateReceiverRegistered = true
         }.onFailure { Log.w(TAG, "注册蓝牙状态监听失败: ${it.message}") }
     }
 
@@ -802,7 +818,10 @@ class AppState @Inject constructor(
     }
 
     /** v70：指令分发提取为独立函数，供首次执行与会话过期重发共用 */
-    private suspend fun runCommand(command: ControlCommand, vin: String): Result<*> = when (command) {
+    private suspend fun runCommand(command: ControlCommand, vin: String): Result<*> {
+        // v84：下发前同步当前 VIN，供 sendCommand(/remote/control) 补传 vin
+        APIConfig.setCurrentVin(vin)
+        return when (command) {
         ControlCommand.LOCK -> vehicleRepository.controlDoorLock(vin, 1)
         ControlCommand.UNLOCK -> vehicleRepository.controlDoorLock(vin, 0)
         ControlCommand.CLIMATE_ON -> vehicleRepository.controlAC(mapOf(
@@ -818,9 +837,11 @@ class AppState @Inject constructor(
             "accOnOff" to "0",
             "status" to "0"
         ))
-        ControlCommand.FLASH -> vehicleRepository.sendCommand("flash")
-        ControlCommand.HONK -> vehicleRepository.sendCommand("honk")
-        ControlCommand.TRUNK -> vehicleRepository.sendCommand("trunk")
+        // v84：改用枚举 rawValue 下发，修复此前硬编码 "flash"/"trunk" 与服务端
+        //      （flashLight/openTailBox）不一致导致闪灯、尾箱指令失效的问题。
+        ControlCommand.FLASH -> vehicleRepository.sendCommand(ControlCommand.FLASH.rawValue)
+        ControlCommand.HONK -> vehicleRepository.sendCommand(ControlCommand.HONK.rawValue)
+        ControlCommand.TRUNK -> vehicleRepository.sendCommand(ControlCommand.TRUNK.rawValue)
         ControlCommand.FIND_CAR -> vehicleRepository.searchCar(vin)
         // v68 修复：车窗 status 方向与服务端相反（实测点「关窗」会开窗）。
         // 服务端约定与门锁一致：0 = 打开类动作、1 = 关闭类动作，
@@ -833,6 +854,7 @@ class AppState @Inject constructor(
         ControlCommand.CHARGE_RESERVE -> Result.failure<Any>(
             com.open.wuling.data.api.APIError("请在「详情」页设置预约充电")
         )
+        }
     }
 
     fun executeCommand(command: ControlCommand) {

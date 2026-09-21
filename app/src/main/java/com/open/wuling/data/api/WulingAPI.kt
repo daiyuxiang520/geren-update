@@ -254,6 +254,13 @@ class WulingAPI @Inject constructor() {
             val result = block()
             if (result.isSuccess) return result
             lastError = result.exceptionOrNull()
+            // v84：业务错误（含会话失效 SessionExpiredError 与普通 APIError）不重试——
+            // 重试既无意义（服务端已明确拒绝），又可能对「超时但已执行」的控车指令
+            // 造成重复下发。仅对网络/IO 类瞬时错误退避重试。
+            if (lastError is APIError) {
+                Log.w(TAG, "业务错误，不再重试: ${lastError.message}")
+                return Result.failure(lastError)
+            }
             if (attempt < maxRetries) {
                 // 指数退避：baseDelay * 2^attempt，最大不超过 maxDelayMs
                 val delayMs = minOf(baseDelayMs * (1 shl attempt), maxDelayMs)
@@ -263,6 +270,43 @@ class WulingAPI @Inject constructor() {
         }
         Log.e(TAG, "请求失败，已重试 ${maxRetries} 次")
         return Result.failure(lastError ?: APIError("请求失败"))
+    }
+
+    /**
+     * v84：控车类写指令专用执行器——**不做任何重试**。
+     *
+     * 背景：`executeWithRetry` 对网络超时会重试。锁车/解锁/尾箱等指令若「请求已送达
+     * 服务端并执行、但响应回程超时」，重试会导致**同一指令被重复下发**（重复开尾门等）。
+     * 控车动作不幂等，故必须禁用盲目重试。用户可从 UI 手动再次操作。
+     */
+    private suspend fun <T> executeWithoutRetry(
+        block: suspend () -> Result<T>
+    ): Result<T> = executeWithRetry(maxRetries = 0, block = block)
+
+    /**
+     * v84：统一校验服务端业务返回（`result`/`errorCode`）。
+     *
+     * 修复此前「只要 HTTP 拿到非空 body 就 Result.success」导致业务失败被当成
+     * 成功、UI 误报「××成功」的问题。失败时区分 500009（会话失效）以便上层重登。
+     *
+     * @param rawBody 原始响应体
+     * @param errorCode 服务端错误码（可能为 null）
+     * @param errorMessage 服务端错误信息（可能为 null）
+     * @param result 服务端业务结果位（可能为 null）
+     */
+    private fun businessFailure(
+        rawBody: String,
+        errorCode: String?,
+        errorMessage: String?,
+        result: Boolean? = null
+    ): APIError {
+        val code = errorCode?.takeIf { it.isNotBlank() && it != "0" }
+        if (code == "500009") {
+            return SessionExpiredError("登录已失效，正在自动重新登录")
+        }
+        // result 明确为 false，或带非 0 错误码 → 业务失败
+        val msg = errorMessage?.takeIf { it.isNotBlank() } ?: "操作失败"
+        return APIError(if (code != null) "$msg (错误码: $code)" else msg)
     }
 
     suspend fun queryDefaultCarStatus(): Result<CarStatusResponse> = withContext(Dispatchers.IO) {
@@ -357,7 +401,8 @@ class WulingAPI @Inject constructor() {
             return@withContext Result.failure(APIError("请先配置 Access Token"))
         }
 
-        executeWithRetry {
+        // v84：控车写指令禁用重试，避免超时后重复下发
+        executeWithoutRetry {
             requestMutex.withLock {
                 try {
                     val timestamp = System.currentTimeMillis().toString()
@@ -366,6 +411,11 @@ class WulingAPI @Inject constructor() {
 
                     val allParams = params.toMutableMap()
                     allParams["command"] = command
+                    // v84：补传 vin（此前缺失，服务端可能因无法定位子车而拒绝指令）
+                    val currentVin = APIConfig.currentVin
+                    if (currentVin.isNotEmpty() && !allParams.containsKey("vin")) {
+                        allParams["vin"] = currentVin
+                    }
                     val jsonBody = gson.toJson(allParams)
 
                     val requestBuilder = Request.Builder()
@@ -378,7 +428,12 @@ class WulingAPI @Inject constructor() {
 
                     if (body != null) {
                         val cmdResponse = gson.fromJson(body, CommandResponse::class.java)
-                        Result.success(cmdResponse)
+                        // v84：校验业务结果，result 明确为 false / 带错误码则判失败
+                        if (cmdResponse.result == false) {
+                            Result.failure(APIError(cmdResponse.message?.takeIf { it.isNotBlank() } ?: "指令执行失败"))
+                        } else {
+                            Result.success(cmdResponse)
+                        }
                     } else {
                         Result.failure(APIError("网络错误"))
                     }
@@ -395,7 +450,8 @@ class WulingAPI @Inject constructor() {
             return@withContext Result.failure(APIError("请先配置 Access Token"))
         }
 
-        executeWithRetry {
+        // v84：锁车/解锁为瞬时动作，禁用重试避免重复下发
+        executeWithoutRetry {
             requestMutex.withLock {
                 try {
                     val timestamp = System.currentTimeMillis().toString()
@@ -417,7 +473,13 @@ class WulingAPI @Inject constructor() {
                     val body = response.body?.string()
 
                     if (body != null) {
-                        Result.success(gson.fromJson(body, CommandResponse::class.java))
+                        // v84：校验业务结果
+                        val r = gson.fromJson(body, CommandResponse::class.java)
+                        if (r.result == false) {
+                            Result.failure(APIError(r.message?.takeIf { it.isNotBlank() } ?: "操作失败"))
+                        } else {
+                            Result.success(r)
+                        }
                     } else {
                         Result.failure(APIError("网络错误"))
                     }
@@ -433,7 +495,8 @@ class WulingAPI @Inject constructor() {
             return@withContext Result.failure(APIError("请先配置 Access Token"))
         }
 
-        executeWithRetry {
+        // v84：控车写指令禁用重试
+        executeWithoutRetry {
             requestMutex.withLock {
                 try {
                     val timestamp = System.currentTimeMillis().toString()
@@ -451,7 +514,13 @@ class WulingAPI @Inject constructor() {
                     val body = response.body?.string()
 
                     if (body != null) {
-                        Result.success(gson.fromJson(body, CommandResponse::class.java))
+                        // v84：校验业务结果
+                        val r = gson.fromJson(body, CommandResponse::class.java)
+                        if (r.result == false) {
+                            Result.failure(APIError(r.message?.takeIf { it.isNotBlank() } ?: "操作失败"))
+                        } else {
+                            Result.success(r)
+                        }
                     } else {
                         Result.failure(APIError("网络错误"))
                     }
@@ -521,7 +590,13 @@ class WulingAPI @Inject constructor() {
                     val body = response.body?.string()
 
                     if (body != null) {
-                        Result.success(gson.fromJson(body, AuthorizeResponse::class.java))
+                        // v84：校验业务结果
+                        val r = gson.fromJson(body, AuthorizeResponse::class.java)
+                        if (r.result == false) {
+                            Result.failure(APIError(r.errorMessage?.takeIf { it.isNotBlank() } ?: "启动授权失败"))
+                        } else {
+                            Result.success(r)
+                        }
                     } else {
                         Result.failure(APIError("网络错误"))
                     }
@@ -556,7 +631,13 @@ class WulingAPI @Inject constructor() {
                     val body = response.body?.string()
 
                     if (body != null) {
-                        Result.success(gson.fromJson(body, SearchCarResponse::class.java))
+                        // v84：校验业务结果
+                        val r = gson.fromJson(body, SearchCarResponse::class.java)
+                        if (r.result == false) {
+                            Result.failure(APIError(r.errorMessage?.takeIf { it.isNotBlank() } ?: "寻车失败"))
+                        } else {
+                            Result.success(r)
+                        }
                     } else {
                         Result.failure(APIError("网络错误"))
                     }
@@ -572,7 +653,8 @@ class WulingAPI @Inject constructor() {
             return@withContext Result.failure(APIError("请先配置 Access Token"))
         }
 
-        executeWithRetry {
+        // v84：车窗为瞬时动作，禁用重试避免重复下发
+        executeWithoutRetry {
             requestMutex.withLock {
                 try {
                     val timestamp = System.currentTimeMillis().toString()
@@ -594,7 +676,13 @@ class WulingAPI @Inject constructor() {
                     val body = response.body?.string()
 
                     if (body != null) {
-                        Result.success(gson.fromJson(body, WindowControlResponse::class.java))
+                        // v84：校验业务结果（result 明确为 false 才判失败）
+                        val r = gson.fromJson(body, WindowControlResponse::class.java)
+                        if (r.result == false) {
+                            Result.failure(APIError(r.errorMessage?.takeIf { it.isNotBlank() } ?: "车窗操作失败"))
+                        } else {
+                            Result.success(r)
+                        }
                     } else {
                         Result.failure(APIError("网络错误"))
                     }
@@ -942,10 +1030,12 @@ fun CarStatusApi.toVehicleStatus(
         gearStatus = autoGearStatus ?: "10",
 
         // 胎压 - 如果API返回的胎压数据为null，则保持默认值0.0，等待单独的胎压API获取
-        tirePressureFL = tirePressureFl?.toDoubleOrNull()?.div(100) ?: 0.0,
-        tirePressureFR = tirePressureFr?.toDoubleOrNull()?.div(100) ?: 0.0,
-        tirePressureRL = tirePressureRl?.toDoubleOrNull()?.div(100) ?: 0.0,
-        tirePressureRR = tirePressureRr?.toDoubleOrNull()?.div(100) ?: 0.0,
+        // v84：与 VehicleRepository 专项胎压接口口径统一——仅当原始值 >100（单位 kPa）才 /100 转 bar，
+        //      否则视为已是 bar，避免内嵌值本就是 bar 时被错误缩小 100 倍。
+        tirePressureFL = tirePressureFl?.toDoubleOrNull()?.let { if (it > 100) it / 100 else it } ?: 0.0,
+        tirePressureFR = tirePressureFr?.toDoubleOrNull()?.let { if (it > 100) it / 100 else it } ?: 0.0,
+        tirePressureRL = tirePressureRl?.toDoubleOrNull()?.let { if (it > 100) it / 100 else it } ?: 0.0,
+        tirePressureRR = tirePressureRr?.toDoubleOrNull()?.let { if (it > 100) it / 100 else it } ?: 0.0,
         tireTemperature = 0,  // 轮胎温度由单独API获取
 
         // 电池
