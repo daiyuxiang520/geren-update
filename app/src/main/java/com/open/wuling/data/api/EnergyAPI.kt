@@ -408,6 +408,8 @@ object EnergyAPI {
      */
     data class TrendPoint(
         val label: String,          // X 轴短标签，如 "08-15" / "3月"
+        val date: LocalDate? = null, // v82：该点真实日期（日维度为当天，月/年维度为该月1号）；
+                                      // 图上绘制、弹窗定位、明细请求都读它，不再靠 now() 反推
         val mileage: Double? = null,
         val elec: Double? = null,
         val fuel: Double? = null
@@ -445,8 +447,49 @@ object EnergyAPI {
             if (cm == null) {
                 TrendPoint(label)
             } else {
+                           TrendPoint(
+                label = label,
+                date = LocalDate.of(ym.year, ym.monthValue, 1),
+                mileage = cm.dbl("drive_fixed_mileage_cm"),
+                elec = cm.dbl("use_calculate_soc_consumption_cm"),
+                fuel = cm.dbl("use_fuel_consumption_cm")
+            )
+            }
+        }
+    }
+
+    /**
+     * 年度的逐月趋势：指定年份 1..12 月，逐月一个点。
+     *
+     * 供「月维度 / 年维度」趋势图使用 —— **严格跟随所选年份**，不再锚定今天。
+     * 过去与未来月份都由 cm 月度接口返回（历史数据完整），未来/无数据月返回空点（图上留白）。
+     * 12 次请求与 fetchMonthlyTrend(12) 持平，且不走历史年份易空的 cy/tds。
+     */
+    fun fetchYearMonthsTrend(vin: String, year: Int): List<TrendPoint> {
+        val futures = (1..12).map { month ->
+            pool.submit(java.util.concurrent.Callable {
+                try {
+                    val body = JSONObject()
+                        .put("vin", vin)
+                        .put("model", DEFAULT_MODEL)
+                        .put("on_year", year.toString())
+                        .put("on_month", month.toString())
+                    records(post("/data_center/ads_use_drive_trip_cm", body)).asMapList().firstOrNull()
+                } catch (e: Exception) {
+                    null
+                }
+            })
+        }
+        return futures.mapIndexed { i, f ->
+            val month = i + 1
+            val label = "${month}月"
+            val cm = try { f.get() } catch (e: Exception) { null }
+            if (cm == null) {
+                TrendPoint(label, date = LocalDate.of(year, month, 1))
+            } else {
                 TrendPoint(
                     label = label,
+                    date = LocalDate.of(year, month, 1),
                     mileage = cm.dbl("drive_fixed_mileage_cm"),
                     elec = cm.dbl("use_calculate_soc_consumption_cm"),
                     fuel = cm.dbl("use_fuel_consumption_cm")
@@ -482,6 +525,7 @@ object EnergyAPI {
             val fuel = r?.dbl("use_fuel_consumption_td")
             TrendPoint(
                 label = "%02d".format(day),
+                date = d,
                 mileage = null,   // tds 无里程字段
                 elec = elec,
                 fuel = fuel

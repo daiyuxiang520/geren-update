@@ -20,6 +20,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
 import com.open.wuling.data.api.EnergyAPI
 import com.open.wuling.ui.theme.LocalCardAlpha
 import com.open.wuling.ui.theme.PrimaryOrange
@@ -166,31 +169,96 @@ fun EnergyTrendChart(
 
         Spacer(modifier = Modifier.height(6.dp))
 
-        // X 轴标签
+        // X 轴标签（v82 重写）
         //
-        // ⚠️ v55 修复：原来用 `i % labelEvery == 0` 按**数组下标**抽稀，是错的。
-        //    9 月 30 天 + labelEvery=5 时，标出的是下标 0/5/10/15/20/25 →
-        //    对应日期 01/06/11/16/21/26，用户看到的是「0 0 11 1 2 2」这种
-        //    被裁掉首位、毫无规律的乱码（线上实测截图）。
-        //    改为**按日期值**判断：日维度标 1/5/10/15/20/25/30，月维度标 1/3/5…11 月。
-        Row(modifier = Modifier.fillMaxWidth()) {
-            points.forEachIndexed { i, p ->
-                Box(
-                    modifier = Modifier.weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (shouldShowLabel(p.label, labelEvery)) {
-                        Text(
-                            text = p.label,
-                            fontSize = 10.sp,
-                            fontWeight = if (selectedIndex == i) FontWeight.Bold else FontWeight.Normal,
-                            color = if (selectedIndex == i) barColor
-                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
-                            maxLines = 1
-                        )
-                    }
-                }
+        // 旧实现把标签塞进等分 Box(weight(1f))，每格宽 < 两位数宽度，Text 在
+        // maxLines=1 + 默认 Clip 下静默裁掉末位，日维度出现 "0 0 1 1 2 2 3" 乱码
+        // （线上实测截图，可精确反推为 01/05/10/15/20/25/30 各被裁成首字符）。
+        // 新实现：用 Canvas.drawText 以柱子中心为锚点居中绘制，文字按实测宽度渲染，
+        // 不受格子宽度约束，物理上不可能被裁；空间紧张时按「实测宽度 + 最小间隙」
+        // 自适应放大抽稀间隔（labelEvery → 2× → 4× …），保证永不重叠、永不裁切。
+        AxisLabels(
+            points = points,
+            labelEvery = labelEvery,
+            selectedIndex = selectedIndex,
+            barColor = barColor
+        )
+    }
+}
+
+/**
+ * X 轴标签（v82）：Canvas 锚点绘制 + 自适应抽稀。
+ *
+ * 锚点与柱状图保持一致（slot = width/n，中心 = slot*(i+0.5)），这样标签、柱子、
+ * 折线、点击热区四者严格同轴。
+ * 抽稀先用 [labelEvery]，逐对检查相邻候选标签「半宽之和 + 最小间隙」是否超过锚点间距，
+ * 重叠则间隔翻倍重试，直到全部放得下或间隔已达到天数上限。
+ */
+@Composable
+private fun AxisLabels(
+    points: List<EnergyAPI.TrendPoint>,
+    labelEvery: Int,
+    selectedIndex: Int?,
+    barColor: Color
+) {
+    val textMeasurer = rememberTextMeasurer()
+    // MaterialTheme 是 Composable，draw lambda 内不可调用，故颜色提到外层 Composable 上下文取好
+    val labelColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
+    Spacer(modifier = Modifier.height(2.dp))
+    Canvas(modifier = Modifier.fillMaxWidth().height(16.dp)) {
+        val n = points.size
+        if (n == 0) return@Canvas
+        val isMonthly = points.any { Regex("^\\d+月$").matches(it.label) }
+        val slot = size.width / n
+        val baseStyle = TextStyle(
+            fontSize = 10.sp,
+            color = labelColor,
+            fontWeight = FontWeight.Normal
+        )
+        val selStyle = TextStyle(
+            fontSize = 10.sp,
+            color = barColor,
+            fontWeight = FontWeight.Bold
+        )
+        val minGap = 8.dp.toPx()
+
+        fun candidates(every: Int): List<Int> = (0 until n).filter { i ->
+            if (i == 0 || i == n - 1) return@filter true
+            val d = points[i].date
+            if (d == null) {
+                shouldShowLabel(points[i].label, every)
+            } else if (isMonthly) {
+                val m = d.monthValue
+                m == 1 || (m - 1) % every == 0
+            } else {
+                val day = d.dayOfMonth
+                day == 1 || day % every == 0
             }
+        }
+
+        var every = labelEvery.coerceAtLeast(1)
+        var cands = candidates(every)
+        repeat(16) {
+            var overlap = false
+            for (j in 1 until cands.size) {
+                val a = cands[j - 1]; val b = cands[j]
+                val ax = slot * (a + 0.5f); val bx = slot * (b + 0.5f)
+                val wa = textMeasurer.measure(points[a].label, baseStyle).size.width
+                val wb = textMeasurer.measure(points[b].label, baseStyle).size.width
+                if ((bx - ax) < (wa / 2f + wb / 2f + minGap)) { overlap = true; break }
+            }
+            if (!overlap || every >= n) return@repeat
+            every *= 2
+            cands = candidates(every)
+        }
+
+        cands.forEach { i ->
+            val cx = (slot * (i + 0.5f)).coerceIn(0f, size.width)
+            val isSel = selectedIndex == i
+            val style = if (isSel) selStyle else baseStyle
+            val w = textMeasurer.measure(points[i].label, style).size.width
+            val x = (cx - w / 2f).coerceIn(0f, size.width - w)
+            drawText(textMeasurer, points[i].label, topLeft = Offset(x, 2.dp.toPx()), style = style)
         }
     }
 }
@@ -249,7 +317,9 @@ fun EnergyTrendLine(
             val bottomPad = 2f
             val topPad = 6f
             val usableH = size.height - topPad - bottomPad
-            val slot = size.width / (n - 1)
+            // v82：与柱状图统一为「n 等分 + 中心对齐」（width/n，x = slot*(i+0.5)），
+            // 否则柱、折线、点击热区三者横向错位（同日期越靠右偏越多）。
+            val slot = size.width / n
 
             drawLine(
                 color = Color.Gray.copy(alpha = 0.25f),
@@ -269,7 +339,7 @@ fun EnergyTrendLine(
                     path = null
                 } else {
                     val ratio = if (maxValue <= 0.0) 0f else (v / maxValue).toFloat()
-                    val x = slot * i
+                    val x = slot * (i + 0.5f)
                     val y = size.height - bottomPad - usableH * ratio
                     val pt = Offset(x, y)
 

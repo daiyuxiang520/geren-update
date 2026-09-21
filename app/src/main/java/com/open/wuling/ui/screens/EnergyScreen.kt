@@ -156,13 +156,21 @@ fun EnergyScreen(
                 when (tabIndex) {
                     // 日维度：画「当月逐日」，比只画一天有意义得多
                     0 -> EnergyAPI.fetchDailyTrend(vin, YearMonth.from(selectedDate))
-                    1 -> EnergyAPI.fetchMonthlyTrend(vin, 12)
-                    else -> EnergyAPI.fetchMonthlyTrend(vin, 12)
+                    // 月/年维度：画「所选年份」的 1–12 月（v82 修复 —— 旧实现锚定今天，
+                    // 切到历史年份时趋势图与汇总卡片说的不是同一段时间）
+                    1 -> EnergyAPI.fetchYearMonthsTrend(vin, selectedMonth.year)
+                    else -> EnergyAPI.fetchYearMonthsTrend(vin, selectedYear)
                 }
             }
         } catch (e: Exception) {
             trendError = e.message ?: "趋势数据加载失败"
             emptyList()
+        }
+        // v82：日维度进入即高亮「所选日」；月/年维度无单日概念，清空高亮
+        if (tabIndex == 0 && trendPoints.isNotEmpty()) {
+            selectedTrendIndex = (selectedDate.dayOfMonth - 1).coerceIn(0, trendPoints.lastIndex)
+        } else {
+            selectedTrendIndex = null
         }
         trendLoading = false
     }
@@ -183,21 +191,15 @@ fun EnergyScreen(
         detailStats = null
         detailStats = try {
             withContext(Dispatchers.IO) {
-                var monthIdx = 0
-                when {
-                    // 日维度：label 是 "01".."31"，用当前选中月的年月拼出完整日期
-                    tabIndex == 0 -> {
-                        val day = point.label.toIntOrNull()
-                        if (day == null) null
-                        else EnergyAPI.fetchDaily(vin, selectedDate.withDayOfMonth(day).toString())
-                    }
-                    // 月/年维度：label 是 "N月"，回溯到对应月份（近 12 个月里的第几个）
-                    else -> {
-                        // trendPoints 末尾即当前月，倒数第 (n-1-idx) 个月
-                        val back = trendPoints.size - 1 - idx
-                        val ym = YearMonth.now().minusMonths(back.toLong())
-                        EnergyAPI.fetchMonthly(vin, ym.year, ym.monthValue)
-                    }
+                // v82：明细与年月直接读 point.date，不再靠 now() 反推。
+                // TrendPoint 自带上真实日期后，图、弹窗、请求三处同一来源，彻底消除错位。
+                val d = point.date
+                if (d == null) {
+                    null
+                } else if (tabIndex == 0) {
+                    EnergyAPI.fetchDaily(vin, d.toString())
+                } else {
+                    EnergyAPI.fetchMonthly(vin, d.year, d.monthValue)
                 }
             }
         } catch (e: Exception) {
@@ -212,11 +214,17 @@ fun EnergyScreen(
         if (point != null) {
             TrendDetailDialog(
                 title = if (tabIndex == 0) {
-                    "${selectedDate.year}年${selectedDate.monthValue}月${point.label.toIntOrNull() ?: point.label}日"
+                    val d = point.date
+                    if (d != null) "${d.year}年${d.monthValue}月${d.dayOfMonth}日"
+                    else "${selectedDate.year}年${selectedDate.monthValue}月${point.label.toIntOrNull() ?: point.label}日"
                 } else {
-                    val back = trendPoints.size - 1 - idx
-                    val ym = YearMonth.now().minusMonths(back.toLong())
-                    "${ym.year}年${ym.monthValue}月"
+                    val d = point.date
+                    if (d != null) "${d.year}年${d.monthValue}月"
+                    else {
+                        val back = trendPoints.size - 1 - idx
+                        val ym = YearMonth.now().minusMonths(back.toLong())
+                        "${ym.year}年${ym.monthValue}月"
+                    }
                 },
                 // 浮层优先显示从汇总接口拿到的完整数据，未回来时用趋势点的值兜底
                 stats = detailStats,
