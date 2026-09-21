@@ -107,8 +107,13 @@ fun EnergyScreen(
     var trendPoints by remember { mutableStateOf<List<EnergyAPI.TrendPoint>>(emptyList()) }
     // 趋势图指标：0=能耗 1=里程
     var trendMetric by remember { mutableIntStateOf(0) }
-    // v55：被点击选中的柱子（null = 未选中），用于弹详情浮层
+    // v55：被点击选中的柱子（null = 未选中），作为弹详情浮层开关。
+    // ⚠️ v82 曾把「图表高亮」也塞进这个变量，导致切日期/刷新/切 tab 自动弹窗；
+    // v83 起拆出 highlightTrendIndex 专管高亮，本变量仅由用户点击设置（见下方说明）。
     var selectedTrendIndex by remember { mutableStateOf<Int?>(null) }
+    // v83：图表视觉高亮（日维度默认指向所选日），**不控制弹窗**。
+    // 与 selectedTrendIndex 分离，避免「高亮」副作用触发「弹窗」。
+    var highlightTrendIndex by remember { mutableStateOf<Int?>(null) }
     // 弹层里展示的明细（点柱子后才去拿，避免每次加载都多打请求）
     var detailStats by remember { mutableStateOf<EnergyAPI.EnergyStats?>(null) }
     var detailLoading by remember { mutableStateOf(false) }
@@ -166,12 +171,14 @@ fun EnergyScreen(
             trendError = e.message ?: "趋势数据加载失败"
             emptyList()
         }
-        // v82：日维度进入即高亮「所选日」；月/年维度无单日概念，清空高亮
-        if (tabIndex == 0 && trendPoints.isNotEmpty()) {
-            selectedTrendIndex = (selectedDate.dayOfMonth - 1).coerceIn(0, trendPoints.lastIndex)
-        } else {
-            selectedTrendIndex = null
-        }
+        // 日维度：高亮落到「所选日」；月/年维度无单日概念，清空高亮。
+        // 只动 highlightTrendIndex，不清则弹窗 —— 弹窗必须由用户点击触发（v83 修复）。
+        // 同时把 selectedTrendIndex 清空，避免切日期/切 tab 后旧弹窗内容与新页面不一致。
+        highlightTrendIndex =
+            if (tabIndex == 0 && trendPoints.isNotEmpty())
+                (selectedDate.dayOfMonth - 1).coerceIn(0, trendPoints.lastIndex)
+            else null
+        selectedTrendIndex = null
         trendLoading = false
     }
 
@@ -631,9 +638,12 @@ fun EnergyScreen(
                                 unit = if (useMileage) " km" else " kWh",
                                 barColor = if (useMileage) MaterialTheme.colorScheme.primary else PrimaryOrange,
                                 labelEvery = if (tabIndex == 0) 5 else 1,
-                                // v55：点柱子弹该周期完整明细
-                                onSelect = { selectedTrendIndex = it },
-                                selectedIndex = selectedTrendIndex
+                                // v55：点柱子弹该周期完整明细（v83：点击时高亮与弹窗同步设置）
+                                onSelect = {
+                                    selectedTrendIndex = it
+                                    highlightTrendIndex = it
+                                },
+                                selectedIndex = selectedTrendIndex ?: highlightTrendIndex
                             )
                         }
                     }
