@@ -1,8 +1,8 @@
 {
-  "versionCode": 87,
-  "versionName": "3.83.1",
-  "updateLog": "v87 (3.83.1) 紧急修复 v86 闪退：\n【问题】\nv86 开启了代码压缩（R8 混淆），但规则有一处疏漏：车辆数据模型的字段名被混淆改名后，Gson 按字段名反序列化全部失效——冷启动读取车辆缓存时数据字段为空，App 启动即闪退；能耗日/月/年视图也可能崩溃。\n【修复】\n1. 保留数据模型的原有字段名，Gson 反序列化恢复正常。\n2. 保留 Gson TypeToken 泛型信息，能耗统计视图恢复正常。\n【给 v86 用户的说明】\n由于 v86 启动即闪退、无法在 App 内自更新，请手动下载本版本安装覆盖（签名一致，直接覆盖安装，数据不丢）。v85 及更早版本的用户可正常走 App 内更新。",
+  "versionCode": 88,
+  "versionName": "3.83.2",
+  "updateLog": "v88 (3.83.2) 闪退诊断版：\n【本次目的】\n部分用户在 v87 上仍出现启动闪退，但此前版本的崩溃信息没有保存到用户可访问的位置，无法定位根因。本版本加入了崩溃取证能力：\n1. 任何崩溃发生时，完整堆栈自动写入「下载」目录（文件名 wuling-crash-时间戳.txt）。\n2. 同时写入应用目录 Android/data/com.wuling.app.repack/files/crash-latest.txt。\n3. 崩溃处理链补齐了系统默认处理器的转发。\n【如果您遇到闪退】\n安装本版本后复现一次闪退，然后用手机文件管理器打开「下载」目录，把 wuling-crash-*.txt 发给开发者即可，堆栈将用于精准修复。给您带来不便深表歉意。",
   "apkUrl": "https://cn-nb2.rains3.com/dump/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "fe6e2df46aa4f2943a6056acc2aaaede"
+  "md5": "ef542d71e81e5a50ee7b1a17e20c28ca"
 }
