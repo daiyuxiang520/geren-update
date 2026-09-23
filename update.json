@@ -1,8 +1,8 @@
 {
-  "versionCode": 96,
-  "versionName": "3.87.1",
-  "updateLog": "v96 (3.87.1) 断网崩溃修复\n\n【修复：断网 / DNS 解析失败导致 App 崩溃】\n此前在弱网或离线环境下，下拉刷新车辆状态会让 App 直接闪退。\n根因：网络层重试执行器（executeWithRetry）没有兜住 block 内抛出的\n未受检异常——DNS 解析失败（UnknownHostException）会直接穿透 withContext，\n逃逸出 Result 包装，最终在主线程的刷新协程里抛未捕获异常，崩进程。\n\n修复分两层：\n· 根因层：executeWithRetry 现在用 try/catch 把 block 内的任何异常\n  （网络 / DNS / 超时等）统一收敛为 Result.failure，不再向外抛。\n  注意：CancellationException 仍原样上抛，不吞协程取消。\n· 加固层：AppState.doRefreshVehicleStatus 此前只有 try/finally 没有 catch，\n  异常会冒泡到外层 launch(Dispatchers.Main) 炸进程。现在补上 catch，\n  任何意外异常都降级为「刷新失败」而非崩溃。\n· 额外：DNS 解析失败 / 连接被拒属于「网络根本不可用」，重试无意义，\n  直接失败返回，避免无谓的退避等待。\n\n影响面：覆盖全部走 executeWithRetry 的网络接口（车辆状态、胎压、控车指令等）。\n登录 / MQTT 凭证接口此前已自带 try/catch，不受影响。\n\n【校验信息】\n- versionCode: 96 / versionName: 3.87.1\n- MD5: __FILL_MD5__\n- 签名与历史版本一致，可直接覆盖安装",
+  "versionCode": 97,
+  "versionName": "3.87.2",
+  "updateLog": "v97 (3.87.2) 充电功率修复\n\n【修复：充电中功率一直显示 \"--\"】\n此前充电时，详情页「充电功率」、首页「充电中 · --」、桌面小组件的功率\n永远显示 --，即使电压/电流都有真实值（实测 411 V / -47 A）。\n\n根因：充电功率兜底估算函数 computeChargePower 里有一行符号判据\n「电流 <= 0 视为无效数据」。但电池电流的行业惯例是「放电为正、充电为负」，\n充电中电流恰为负值（-47 A），被当成无效数据直接丢弃 → 功率恒为 null → 显示 --。\n功能本身 v78 起就已实现，只是判据写反，一直没暴露。\n\n修复（单点，只改 computeChargePower 一处，三处 UI 自动生效）：\n· 电压/电流取绝对值后再判——负号表示充电而非无效数据，两种符号约定天然兼容。\n  实测场景 411V × 47A ≈ 19.3 kW，修复后详情页/首页/小组件将显示约 19.3 kW。\n· 占位剔除由「区间(340-360V/45-55A)」收紧为「精确匹配(350V/50A)」——\n  350V×50A 恰是交流慢充的典型工况，原区间判定会误杀真实慢充数据，\n  导致慢充时功率也显示 --；默认占位是程序内写死常量，精确相等即可命中。\n\n影响面：详情页充电功率、首页车头卡充电行、桌面小组件功率文案，三处同源同修。\n\n【校验信息】\n- versionCode: 97 / versionName: 3.87.2\n- MD5: 6280707b9a0c9d1c6e287ced20f88c33\n- 签名与历史版本一致，可直接覆盖安装",
   "apkUrl": "https://cn-nb2.rains3.com/dump/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "3cdbeb71bf8ad17ab88f77245cf69640"
+  "md5": "6280707b9a0c9d1c6e287ced20f88c33"
 }
