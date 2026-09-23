@@ -1,8 +1,8 @@
 {
-  "versionCode": 95,
-  "versionName": "3.87.0",
-  "updateLog": "v95 (3.87.0) 桌面小组件改版\n\n【状态卡重排】\n· 新增头部：车辆名 + 数据更新时间（以前完全看不出这数据是什么时候的）\n· 续航改成纯数字大字，单位「km」和「总续航」标签固定，不再因为数据\n  位数变化（-- / 328 / 1280）导致整行抖动\n· 电量条改到右侧、不再和续航大字抢宽度，形状换成圆角胶囊\n· 状态（上电 / 车锁 / 车窗）降为底部三个等宽小块，异常项整块转红\n\n【油量行不再白占高度】\n纯电车型没有油量数据，此前固定显示「油量 --」占掉一行。现在整行隐藏，\n把 2×3 有限的高度让给真正有信息的部分；混动 / 增程车型照常显示。\n\n【深色桌面适配】\n此前小组件底是写死的浅色 #F4F6FA，深色桌面上是一块刺眼白板。\n现在提供深浅两套配色，跟随系统深色模式自动切换。\n\n【控制条加「刷新」键】\n四键：锁车 / 关窗 / 寻车 / 刷新。点刷新立即拉一次最新状态，\n不再干等 30 分钟定时周期（手动点击会绕过刷新节流，点了就有反应）。\n\n【图标矢量化】\n状态卡内的 emoji（🚗🔒🔓✅⚠️🔌）全部换成矢量图标，统一线宽与配色，\n在 ColorOS 等 ROM 上不再出现字形、色调不统一的问题。\n\n【校验信息】\n- versionCode: 95 / versionName: 3.87.0\n- MD5: aff19e8f95046e70d5a3e026648dbd47\n- 签名与历史版本一致，可直接覆盖安装",
+  "versionCode": 96,
+  "versionName": "3.87.1",
+  "updateLog": "v96 (3.87.1) 断网崩溃修复\n\n【修复：断网 / DNS 解析失败导致 App 崩溃】\n此前在弱网或离线环境下，下拉刷新车辆状态会让 App 直接闪退。\n根因：网络层重试执行器（executeWithRetry）没有兜住 block 内抛出的\n未受检异常——DNS 解析失败（UnknownHostException）会直接穿透 withContext，\n逃逸出 Result 包装，最终在主线程的刷新协程里抛未捕获异常，崩进程。\n\n修复分两层：\n· 根因层：executeWithRetry 现在用 try/catch 把 block 内的任何异常\n  （网络 / DNS / 超时等）统一收敛为 Result.failure，不再向外抛。\n  注意：CancellationException 仍原样上抛，不吞协程取消。\n· 加固层：AppState.doRefreshVehicleStatus 此前只有 try/finally 没有 catch，\n  异常会冒泡到外层 launch(Dispatchers.Main) 炸进程。现在补上 catch，\n  任何意外异常都降级为「刷新失败」而非崩溃。\n· 额外：DNS 解析失败 / 连接被拒属于「网络根本不可用」，重试无意义，\n  直接失败返回，避免无谓的退避等待。\n\n影响面：覆盖全部走 executeWithRetry 的网络接口（车辆状态、胎压、控车指令等）。\n登录 / MQTT 凭证接口此前已自带 try/catch，不受影响。\n\n【校验信息】\n- versionCode: 96 / versionName: 3.87.1\n- MD5: __FILL_MD5__\n- 签名与历史版本一致，可直接覆盖安装",
   "apkUrl": "https://cn-nb2.rains3.com/dump/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "aff19e8f95046e70d5a3e026648dbd47"
+  "md5": "3cdbeb71bf8ad17ab88f77245cf69640"
 }
