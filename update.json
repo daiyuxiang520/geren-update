@@ -1,8 +1,8 @@
 {
-  "versionCode": 99,
-  "versionName": "3.88.1",
-  "updateLog": "v99 (3.88.1) 返回键修复\n\n【修复：能耗数据页按系统返回直接回桌面】\n此前在「我的 → 车辆能耗」页面，使用系统返回手势或返回键会直接退回桌面，\n只能点页面左上角的返回按钮才能回上一页。\n\n根因：全工程没有注册任何系统返回拦截（BackHandler）。能耗页是布尔开关\n控制的全屏覆盖页，不是导航栈页面——系统返回事件没人接收，一路落到\nActivity 默认行为：直接结束应用。且因预测性返回（Android 13+/16）已启用，\n连过渡动画都没有，观感是\"瞬间回桌面\"。\n\n修复（MainActivity 共 2 行）：\n· 能耗页注册 BackHandler(enabled = showEnergyPage)——返回键/手势等价于\n  左上角返回按钮，回「我的」；仅能耗页在前台时拦截，主界面四个 Tab\n  「返回即退出」的 Android 惯例行为原样保留。\n· 顺手修复连带问题：此前能耗页打开时点底部其他 Tab 无反应（内容区被\n  能耗页霸占），现在切 Tab 会自动关闭能耗页。\n\n不受影响：诊断中心等弹层的返回关闭、主界面返回退出、Manifest 预测性返回配置。\n\n【校验信息】\n- versionCode: 99 / versionName: 3.88.1\n- MD5: 29db2a3d1e1f7c207c944d3e2199ab1b\n- 签名与历史版本一致，可直接覆盖安装",
+  "versionCode": 100,
+  "versionName": "3.89.0",
+  "updateLog": "v100 (3.89.0) 关于页新增官网入口\n\n【新增：「关于我们」官方网站入口】\n「我的 → 关于我们」弹窗新增「官方网站」一行，点击直接跳转本项目官网\nhttps://wulingchekong.ccwu.cc/ —— 下载、更新日志、功能介绍一站直达。\n官网已支持三套视觉主题（赛博深色 / 清新简约 / 玻璃拟态）实时切换，并记忆偏好。\n\n不受影响：开源仓库、开源致谢、版本信息等原有入口。\n\n【校验信息】\n- versionCode: 100 / versionName: 3.89.0\n- MD5: 442a901001ca8c0c6d38c01f0aaa15be\n- 签名与历史版本一致（keystore SHA-256 7b9f49df…d5e37），可覆盖安装",
   "apkUrl": "https://cn-nb2.rains3.com/dump/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "29db2a3d1e1f7c207c944d3e2199ab1b"
+  "md5": "442a901001ca8c0c6d38c01f0aaa15be"
 }
