@@ -1,8 +1,8 @@
 {
-  "versionCode": 101,
-  "versionName": "3.90.0-beta1",
-  "updateLog": "⚠️ 测试版（非稳定发布）· v101 beta1 (3.90.0-beta1)\n\n本版包含两项实验性改动，走测试通道灰度验证：\n\n1. 【包体积瘦身实验】重新启用 R8「只裁剪」管线（不优化 / 不混淆 / 仅裁剪无用代码与资源），APK 体积从 17MB 降至约 5.8MB（-66%）。历史上 R8 优化阶段曾引发 Compose 首帧崩溃（v86–v90），本次以「仅裁剪」模式规避该问题，请重点回归：冷启动、车况刷新、MQTT、蓝牙、NFC、图标渲染\n2. 【性能埋点】新增启动分段耗时与帧流畅度本地监测（进程→首帧耗时、每 60 秒掉帧/冻结帧统计），数据仅写入 App 内「我的 → 调试日志」面板，不上传服务器，用于为后续性能优化建立基线\n\n提示：本版签名与稳定版完全一致，可从 v100 直接覆盖安装；如遇异常切回「稳定版」通道即可回到正式版本。",
-  "apkUrl": "https://cn-nb2.rains3.com/dump/wuling-assistant-beta.apk",
+  "versionCode": 102,
+  "versionName": "3.89.1",
+  "updateLog": "v102 (3.89.1) 稳定构建（回退 v101-beta 实验版）\n\n【说明】\nv101-beta 的「包体积瘦身实验」在真机出现闪退，实验中止。\n本版恢复 v100 的稳定构建配置（不启用 R8 裁剪），并保留无害的性能埋点。\n\n- 签名与历史版本一致，可从 v100 / v101-beta 直接覆盖安装\n- 已安装 v101-beta 的用户：请通过本版覆盖安装，无需卸载（数据不丢失）\n\n【校验信息】\n- versionCode: 102 / versionName: 3.89.1\n- MD5: ee8efb86b029afc0147713722ab1b283\n- 体积恢复约 17MB（v101-beta 的 5.8MB 实验版已回退）\n\n（本条为测试通道推送：v101-beta 实验中止，请覆盖安装本稳定版）",
+  "apkUrl": "https://cn-nb2.rains3.com/dump/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "67c267ea3ffe13d9cc943bdc6dcf11f9"
+  "md5": "ee8efb86b029afc0147713722ab1b283"
 }
