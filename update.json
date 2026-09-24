@@ -1,8 +1,8 @@
 {
-  "versionCode": 102,
-  "versionName": "3.89.1",
-  "updateLog": "v102 (3.89.1) 稳定构建（回退 v101-beta 实验版）\n\n【说明】\nv101-beta 的「包体积瘦身实验」在真机出现闪退，实验中止。\n本版恢复 v100 的稳定构建配置（不启用 R8 裁剪），并保留无害的性能埋点。\n\n- 签名与历史版本一致，可从 v100 / v101-beta 直接覆盖安装\n- 已安装 v101-beta 的用户：请通过本版覆盖安装，无需卸载（数据不丢失）\n\n【校验信息】\n- versionCode: 102 / versionName: 3.89.1\n- MD5: ee8efb86b029afc0147713722ab1b283\n- 体积恢复约 17MB（v101-beta 的 5.8MB 实验版已回退）",
+  "versionCode": 103,
+  "versionName": "3.90.0",
+  "updateLog": "v103 (3.90.0) 下载源新增雨云/Gitee 选项\n\n【改进：更新弹窗「下载源」列表重构】\n此前列表只有 15 个 GitHub 加速代理源——它们仅在下载地址为 GitHub raw 时才有效，\n平时选了也无实际作用，且看不到雨云、Gitee 这两个真正在用的源。\n\n1. 下载源列表新增「雨云对象存储（主源）」与「Gitee 发行版」两个真实选项，均独立测速\n2. GitHub 代理镜像仅在下载地址指向 GitHub raw 时显示（彼时才真正生效）\n3. 「自动（推荐）」模式候选集加入 Gitee 直链，多一路国内免代理兜底\n4. 修复：此前在直链下载地址下手动选镜像会被静默忽略的问题\n\n其余功能与 v102 一致。\n\n【校验信息】\n- versionCode: 103 / versionName: 3.90.0\n- MD5: ece62412ce9028bbe0c470cfcd96af2c\n- 签名与历史版本一致，可覆盖安装",
   "apkUrl": "https://cn-nb2.rains3.com/dump/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "ee8efb86b029afc0147713722ab1b283"
+  "md5": "ece62412ce9028bbe0c470cfcd96af2c"
 }
