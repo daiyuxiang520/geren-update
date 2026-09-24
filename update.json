@@ -1,8 +1,8 @@
 {
-  "versionCode": 100,
-  "versionName": "3.89.0",
-  "updateLog": "v100 (3.89.0) 关于页新增官网入口\n\n【新增：「关于我们」官方网站入口】\n「我的 → 关于我们」弹窗新增「官方网站」一行，点击直接跳转本项目官网\nhttps://wulingchekong.ccwu.cc/ —— 下载、更新日志、功能介绍一站直达。\n官网已支持三套视觉主题（赛博深色 / 清新简约 / 玻璃拟态）实时切换，并记忆偏好。\n\n不受影响：开源仓库、开源致谢、版本信息等原有入口。\n\n【校验信息】\n- versionCode: 100 / versionName: 3.89.0\n- MD5: 442a901001ca8c0c6d38c01f0aaa15be\n- 签名与历史版本一致（keystore SHA-256 7b9f49df…d5e37），可覆盖安装",
+  "versionCode": 102,
+  "versionName": "3.89.1",
+  "updateLog": "v102 (3.89.1) 稳定构建（回退 v101-beta 实验版）\n\n【说明】\nv101-beta 的「包体积瘦身实验」在真机出现闪退，实验中止。\n本版恢复 v100 的稳定构建配置（不启用 R8 裁剪），并保留无害的性能埋点。\n\n- 签名与历史版本一致，可从 v100 / v101-beta 直接覆盖安装\n- 已安装 v101-beta 的用户：请通过本版覆盖安装，无需卸载（数据不丢失）\n\n【校验信息】\n- versionCode: 102 / versionName: 3.89.1\n- MD5: ee8efb86b029afc0147713722ab1b283\n- 体积恢复约 17MB（v101-beta 的 5.8MB 实验版已回退）",
   "apkUrl": "https://cn-nb2.rains3.com/dump/wuling-assistant.apk",
   "forceUpdate": false,
-  "md5": "442a901001ca8c0c6d38c01f0aaa15be"
+  "md5": "ee8efb86b029afc0147713722ab1b283"
 }
