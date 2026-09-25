@@ -1,8 +1,8 @@
 {
-  "versionCode": 115,
-  "versionName": "4.0.1",
-  "updateLog": "v115 (4.0.1) 修复备用下载源\n\n【修复：Gitee 发行版下载源不可用】\n上一版本起更新包文件名带版本号（wuling-assistant-v114.apk），\n但 App 内 Gitee 备用源仍按旧文件名拼接，导致测速显示「不可用」。\n现已对齐：Gitee 备用源恢复正常。\n\n【新增：GitHub 发行版下载源】\n下载源列表新增「GitHub 发行版」作为第三备源（海外/代理环境可用；\n国内直连不通时自动显示不可用，不影响自动模式择优）。\n\n【提示】本版本 NFC 绑定修复与 4.0.0 相同：点「绑定」后直接贴卡即可。\n\n【校验信息】\n- versionCode: 115 / versionName: 4.0.1（正式版，beta 通道同步）\n- MD5: 7d0fe695d41626abb0725bfec68d97cb\n- 签名与历史版本一致，可覆盖安装",
-  "apkUrl": "https://cn-nb2.rains3.com/dump/wuling-assistant-v115-beta.apk",
+  "versionCode": 116,
+  "versionName": "4.1.0",
+  "updateLog": "v116 (4.1.0) NFC 绑定写卡更稳，失败可原地重试\n\n【优化：NFC 写卡成功率】\n- 贴卡后先等 150ms 再写入：刚感应到的瞬间磁场未稳，立刻写最容易断\n  （v4.0.0 日志里有 11 毫秒就断掉的case）\n- 写入被中断时自动补试 2 次（共 3 次），间隔加长到 400ms\n\n【新增：失败页「再试一次」】\n以前写失败只能回设置页重新点「绑定」再来一遍。\n现在失败页直接给「再试一次」按钮，点一下再把手机贴上去即可重写，\n不用重走入口。\n\n【提示】贴卡后保持不动 2~3 秒；感应区多在手机背部摄像头附近。\n绑定期只贴这一张目标标签（别贴公交卡/银行卡）；\n以前写过网址的标签请先用 NFC Tools 擦除再绑。\n\n【校验信息】\n- versionCode: 116 / versionName: 4.1.0（正式版，beta 通道同步）\n- MD5: 2df5f9f7a2b966561ff6119145e7bcf9\n- 签名与历史版本一致，可覆盖安装",
+  "apkUrl": "https://cn-nb2.rains3.com/dump/wuling-assistant-v116-beta.apk",
   "forceUpdate": false,
-  "md5": "7d0fe695d41626abb0725bfec68d97cb"
+  "md5": "2df5f9f7a2b966561ff6119145e7bcf9"
 }
