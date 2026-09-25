@@ -1,8 +1,8 @@
 {
-  "versionCode": 113,
-  "versionName": "3.99.0",
-  "updateLog": "v113 (3.99.0) NFC 绑定一步到位\n\n【修复：绑定标签需先退到桌面再贴卡】\n上一版本在部分机型上，绑定模式期间贴卡 App 收不到感应事件，\n需要点「绑定」后先回到桌面、再贴卡才能写入。\n现在绑定模式期间 App 直接接管所有标签触碰，\n点「绑定」→ 手机贴卡即可，无需任何绕行操作。\n（绑定期请只贴你要绑定的 NFC 标签，勿贴公交卡/银行卡）\n\n【同时改进】\n· 写卡时若感应不稳（手抖/移开），自动重试一次再报失败\n· 失败提示更明确：保持贴紧别移开，重新点「绑定」再试\n\n【校验信息】\n- versionCode: 113 / versionName: 3.99.0（正式版，beta 通道同步）\n- MD5: 306709a300a580ac87d97ddd3051f9ff\n- 签名与历史版本一致，可覆盖安装",
-  "apkUrl": "https://cn-nb2.rains3.com/dump/wuling-assistant-beta.apk",
+  "versionCode": 114,
+  "versionName": "4.0.0",
+  "updateLog": "v114 (4.0.0) NFC 绑定修复定稿\n\n【修复：点「绑定」后直接贴卡即可，无需退到桌面】\n前一版本在部分机型上，绑定模式期间贴卡 App 收不到感应事件，\n需要先回到桌面再贴卡。本次彻底修复：\n点「绑定 NFC 标签」→ 手机贴住标签 2~3 秒 → 写入成功。\n（绑定期请只贴要绑定的 NFC 标签，勿贴公交卡/银行卡；\n 以前写过网址的标签请先用 NFC Tools「擦除标签」再绑）\n\n【改进：更新包文件名带版本号】\n下载地址改为 wuling-assistant-v114.apk 这样的独立文件名，\n彻底避免同名文件反复覆盖造成的缓存/重复问题。\n\n【校验信息】\n- versionCode: 114 / versionName: 4.0.0（正式版，beta 通道同步）\n- MD5: b5ea1ae4ecb796627d979380ea51b154\n- 签名与历史版本一致，可覆盖安装",
+  "apkUrl": "https://cn-nb2.rains3.com/dump/wuling-assistant-v114-beta.apk",
   "forceUpdate": false,
-  "md5": "306709a300a580ac87d97ddd3051f9ff"
+  "md5": "b5ea1ae4ecb796627d979380ea51b154"
 }
