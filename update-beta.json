@@ -1,8 +1,8 @@
 {
-  "versionCode": 114,
-  "versionName": "4.0.0",
-  "updateLog": "v114 (4.0.0) NFC 绑定修复定稿\n\n【修复：点「绑定」后直接贴卡即可，无需退到桌面】\n前一版本在部分机型上，绑定模式期间贴卡 App 收不到感应事件，\n需要先回到桌面再贴卡。本次彻底修复：\n点「绑定 NFC 标签」→ 手机贴住标签 2~3 秒 → 写入成功。\n（绑定期请只贴要绑定的 NFC 标签，勿贴公交卡/银行卡；\n 以前写过网址的标签请先用 NFC Tools「擦除标签」再绑）\n\n【改进：更新包文件名带版本号】\n下载地址改为 wuling-assistant-v114.apk 这样的独立文件名，\n彻底避免同名文件反复覆盖造成的缓存/重复问题。\n\n【校验信息】\n- versionCode: 114 / versionName: 4.0.0（正式版，beta 通道同步）\n- MD5: b5ea1ae4ecb796627d979380ea51b154\n- 签名与历史版本一致，可覆盖安装",
-  "apkUrl": "https://cn-nb2.rains3.com/dump/wuling-assistant-v114-beta.apk",
+  "versionCode": 115,
+  "versionName": "4.0.1",
+  "updateLog": "v115 (4.0.1) 修复备用下载源\n\n【修复：Gitee 发行版下载源不可用】\n上一版本起更新包文件名带版本号（wuling-assistant-v114.apk），\n但 App 内 Gitee 备用源仍按旧文件名拼接，导致测速显示「不可用」。\n现已对齐：Gitee 备用源恢复正常。\n\n【新增：GitHub 发行版下载源】\n下载源列表新增「GitHub 发行版」作为第三备源（海外/代理环境可用；\n国内直连不通时自动显示不可用，不影响自动模式择优）。\n\n【提示】本版本 NFC 绑定修复与 4.0.0 相同：点「绑定」后直接贴卡即可。\n\n【校验信息】\n- versionCode: 115 / versionName: 4.0.1（正式版，beta 通道同步）\n- MD5: 7d0fe695d41626abb0725bfec68d97cb\n- 签名与历史版本一致，可覆盖安装",
+  "apkUrl": "https://cn-nb2.rains3.com/dump/wuling-assistant-v115-beta.apk",
   "forceUpdate": false,
-  "md5": "b5ea1ae4ecb796627d979380ea51b154"
+  "md5": "7d0fe695d41626abb0725bfec68d97cb"
 }
